@@ -114,40 +114,255 @@ class Paper extends ThemeExtension<Paper> {
   }
 }
 
+/// Fonte da interface (botões, menus, formulários). A letra de mão fica só no caderno.
+const uiFont = 'Inter';
+
+/// Linha fina usada em bordas e divisórias (estilo Radix/Raycast).
+Color hairline(Paper p) => p.ink.withValues(alpha: 0.12);
+
 ThemeData paperTheme(Brightness brightness, {required String hand, required String mono}) {
-  final p = brightness == Brightness.light ? Paper.light(hand: hand, mono: mono) : Paper.dark(hand: hand, mono: mono);
+  final light = brightness == Brightness.light;
+  final p = light ? Paper.light(hand: hand, mono: mono) : Paper.dark(hand: hand, mono: mono);
+  final line = hairline(p);
+  final accent = light ? const Color(0xFF1F4D3A) : const Color(0xFF8FD1AE);
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF1F4D3A), brightness: brightness).copyWith(
+    primary: p.ink, // ação principal = tinta (preto-azulado), como no Raycast
+    onPrimary: p.paper,
+    secondary: accent,
     surface: p.paper,
     onSurface: p.ink,
-    primary: brightness == Brightness.light ? const Color(0xFF1F4D3A) : null,
+    onSurfaceVariant: p.pencil,
+    outline: line,
+    outlineVariant: line,
+    surfaceTint: Colors.transparent,
+    error: p.redInk,
   );
+  final radius = BorderRadius.circular(8);
+  final text = Typography.material2021(platform: TargetPlatform.macOS).black
+      .apply(fontFamily: uiFont, bodyColor: p.ink, displayColor: p.ink);
+  WidgetStateProperty<Color?> hoverPress(Color base) => WidgetStateProperty.resolveWith((s) {
+    if (s.contains(WidgetState.pressed)) return base.withValues(alpha: 0.10);
+    if (s.contains(WidgetState.hovered) || s.contains(WidgetState.focused)) return base.withValues(alpha: 0.06);
+    return null;
+  });
+  final buttonText = WidgetStatePropertyAll(
+    TextStyle(fontFamily: uiFont, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: -0.1),
+  );
+  const buttonPadding = WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14, vertical: 10));
+  final shape = WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: radius));
+
   return ThemeData(
     colorScheme: scheme,
     brightness: brightness,
+    fontFamily: uiFont,
+    textTheme: text.copyWith(
+      headlineSmall: text.headlineSmall?.copyWith(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -0.4),
+      titleMedium: text.titleMedium?.copyWith(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+      bodyMedium: text.bodyMedium?.copyWith(fontSize: 14, height: 1.4),
+      bodySmall: text.bodySmall?.copyWith(fontSize: 12.5, color: p.pencil),
+    ),
     scaffoldBackgroundColor: p.paperShade,
     extensions: [p],
+    // Sem ondas de toque do Android: só um realce discreto.
+    splashFactory: NoSplash.splashFactory,
+    highlightColor: Colors.transparent,
+    hoverColor: p.ink.withValues(alpha: 0.05),
+    focusColor: accent.withValues(alpha: 0.18),
+    dividerTheme: DividerThemeData(color: line, thickness: 1, space: 1),
     cardTheme: CardThemeData(
       color: p.paper,
       elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: p.rule),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: line),
       ),
     ),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: p.paperShade,
-      indicatorColor: p.paper,
-      labelTextStyle: WidgetStatePropertyAll(p.hand(15)),
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.disabled) ? p.ink.withValues(alpha: 0.2) : p.ink,
+        ),
+        foregroundColor: WidgetStatePropertyAll(p.paper),
+        overlayColor: hoverPress(p.paper),
+        textStyle: buttonText,
+        padding: buttonPadding,
+        shape: shape,
+        elevation: const WidgetStatePropertyAll(0),
+        minimumSize: const WidgetStatePropertyAll(Size(0, 38)),
+      ),
     ),
-    navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: p.paperShade,
-      indicatorColor: p.paper,
-      selectedLabelTextStyle: p.hand(20, weight: FontWeight.w700),
-      unselectedLabelTextStyle: p.hand(20, color: p.pencil),
+    textButtonTheme: TextButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll(p.ink),
+        overlayColor: hoverPress(p.ink),
+        textStyle: buttonText,
+        padding: buttonPadding,
+        shape: shape,
+        minimumSize: const WidgetStatePropertyAll(Size(0, 38)),
+      ),
     ),
-    dialogTheme: DialogThemeData(backgroundColor: p.paper),
-    bottomSheetTheme: BottomSheetThemeData(backgroundColor: p.paper),
-    inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: p.paperShade.withValues(alpha: 0.4)),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll(p.ink),
+        overlayColor: hoverPress(p.ink),
+        side: WidgetStatePropertyAll(BorderSide(color: line)),
+        textStyle: buttonText,
+        padding: buttonPadding,
+        shape: shape,
+        minimumSize: const WidgetStatePropertyAll(Size(0, 38)),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll(p.pencil),
+        overlayColor: hoverPress(p.ink),
+        shape: shape,
+        iconSize: const WidgetStatePropertyAll(18),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? p.ink.withValues(alpha: 0.08) : Colors.transparent,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.ink : p.pencil),
+        overlayColor: hoverPress(p.ink),
+        side: WidgetStatePropertyAll(BorderSide(color: line)),
+        textStyle: WidgetStatePropertyAll(TextStyle(fontFamily: uiFont, fontSize: 13.5, fontWeight: FontWeight.w600)),
+        shape: shape,
+        visualDensity: VisualDensity.compact,
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      showCheckmark: false,
+      backgroundColor: Colors.transparent,
+      selectedColor: p.ink.withValues(alpha: 0.08),
+      side: BorderSide(color: line),
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      labelStyle: TextStyle(fontFamily: uiFont, fontSize: 13.5, fontWeight: FontWeight.w500, color: p.ink),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      side: BorderSide(color: p.pencil, width: 1.4),
+      fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.ink : null),
+      checkColor: WidgetStatePropertyAll(p.paper),
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.ink : p.pencil),
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      isDense: true,
+      filled: true,
+      fillColor: light ? Colors.white.withValues(alpha: 0.55) : Colors.black.withValues(alpha: 0.2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      labelStyle: TextStyle(color: p.pencil, fontSize: 14),
+      floatingLabelStyle: TextStyle(color: p.ink, fontSize: 13, fontWeight: FontWeight.w600),
+      hintStyle: TextStyle(color: p.pencil.withValues(alpha: 0.7)),
+      border: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: accent, width: 1.6),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: p.redInk),
+      ),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(p.paper),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: line),
+          ),
+        ),
+      ),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: p.paper,
+      elevation: 8,
+      shadowColor: Colors.black26,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: line),
+      ),
+      textStyle: TextStyle(fontFamily: uiFont, fontSize: 14, color: p.ink),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: p.paper,
+      surfaceTintColor: Colors.transparent,
+      elevation: 24,
+      shadowColor: Colors.black38,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: line),
+      ),
+      titleTextStyle: TextStyle(fontFamily: uiFont, fontSize: 17, fontWeight: FontWeight.w600, color: p.ink),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: p.paper,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      dragHandleColor: p.ink.withValues(alpha: 0.2),
+      dragHandleSize: const Size(36, 4),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: p.ink,
+      contentTextStyle: TextStyle(fontFamily: uiFont, fontSize: 14, color: p.paper),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 6,
+      width: 420,
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(color: p.ink, borderRadius: BorderRadius.circular(6)),
+      textStyle: TextStyle(fontFamily: uiFont, fontSize: 12, color: p.paper),
+      waitDuration: const Duration(milliseconds: 400),
+    ),
+    listTileTheme: ListTileThemeData(
+      dense: true,
+      titleTextStyle: TextStyle(fontFamily: uiFont, fontSize: 14, fontWeight: FontWeight.w500, color: p.ink),
+      subtitleTextStyle: TextStyle(fontFamily: uiFont, fontSize: 12.5, color: p.pencil),
+      iconColor: p.pencil,
+      shape: RoundedRectangleBorder(borderRadius: radius),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: p.ink,
+      foregroundColor: p.paper,
+      elevation: 2,
+      hoverElevation: 4,
+      highlightElevation: 2,
+      extendedTextStyle: TextStyle(fontFamily: uiFont, fontSize: 14, fontWeight: FontWeight.w600),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {for (final t in TargetPlatform.values) t: const FadeForwardsPageTransitionsBuilder()},
+    ),
   );
+}
+
+/// Rolagem com "elástico" (como no Mac/iOS), sem o brilho do Android.
+class SoftScrollBehavior extends MaterialScrollBehavior {
+  const SoftScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
 }

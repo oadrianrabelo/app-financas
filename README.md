@@ -16,6 +16,14 @@ Disponível − (Cartão + Casa + Pessoal + Outros) = Sobrou
   num post-it na página do mês. Entradas como empréstimo que voltou podem ser marcadas "sem dízimo".
 - Dízimo e oferta nascem **a entregar** (○); toque para marcar ✓ quando entregar.
 - Tema de **papel pautado** (ou Noite), com letra de mão e fonte dos números escolhíveis nos Ajustes.
+- Interface em **Inter**, com bordas finas e sem efeitos do Android; paleta de comandos e atalhos:
+
+| Atalho | O quê |
+|---|---|
+| `Ctrl/⌘ K` | Buscar lançamentos ou executar uma ação |
+| `N` / `E` | Novo gasto / nova entrada |
+| `←` `→` / `T` | Mês anterior/próximo / mês atual |
+| `1`–`4` | Mês, Lançamentos, Contas, Ajustes |
 
 ## Começando
 
@@ -41,7 +49,9 @@ lib/
   backup/backup.dart     exportar/importar JSON com mesclagem
   updates/               atualização automática (manifesto assinado + instalação)
   ui/pages/              Mês (o caderno), Lançamentos, Contas, Ajustes
-  ui/theme/              tema de papel (cores, pauta) e lista de fontes
+  ui/theme/              tema de papel (cores, pauta, componentes) e lista de fontes
+  ui/nav.dart            liga atalhos e paleta à página do mês
+  ui/widgets/command_palette.dart   a paleta de comandos (Ctrl/⌘ K)
   ui/widgets/ledger.dart peças da folha: pauta, títulos, linhas com ✓, post-it
   ui/widgets/            formulário de lançamento, "Separar dízimo e oferta", banner de atualização
 assets/fonts/            fontes embutidas (licença OFL em cada pasta)

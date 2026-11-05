@@ -33,18 +33,9 @@ class _EntriesPageState extends State<EntriesPage> {
         return PageBody(
           title: 'Lançamentos',
           trailing: MonthPicker(month: _month, onChanged: (m) => setState(() => _month = m)),
-          fab: FloatingActionButton.extended(
-            onPressed: () => showEntryForm(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Novo'),
-          ),
           children: [
             TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Buscar…',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar…'),
               onChanged: (v) => setState(() => _search = v),
             ),
             const SizedBox(height: 12),

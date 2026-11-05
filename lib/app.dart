@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/app_data.dart';
+import 'data/database.dart';
+import 'ui/nav.dart';
 import 'ui/pages/accounts_page.dart';
 import 'ui/pages/entries_page.dart';
 import 'ui/pages/month_page.dart';
 import 'ui/pages/settings_page.dart';
 import 'ui/theme/paper.dart';
+import 'ui/widgets/command_palette.dart';
+import 'ui/widgets/entry_form.dart';
+import 'ui/widgets/kbd.dart';
 import 'ui/widgets/update_banner.dart';
 
 const appName = 'Livro-Caixa';
@@ -22,6 +28,7 @@ class LivroCaixaApp extends StatelessWidget {
       builder: (context, _) => MaterialApp(
         title: appName,
         debugShowCheckedModeBanner: false,
+        scrollBehavior: const SoftScrollBehavior(),
         theme: paperTheme(Brightness.light, hand: prefs.handFont, mono: prefs.monoFont),
         darkTheme: paperTheme(Brightness.dark, hand: prefs.handFont, mono: prefs.monoFont),
         themeMode: prefs.themeMode,
@@ -45,10 +52,11 @@ const _destinations = [
   _Dest('Mês', Icons.menu_book_outlined, Icons.menu_book, MonthPage()),
   _Dest('Lançamentos', Icons.receipt_long_outlined, Icons.receipt_long, EntriesPage()),
   _Dest('Contas', Icons.account_balance_outlined, Icons.account_balance, AccountsPage()),
-  _Dest('Ajustes', Icons.settings_outlined, Icons.settings, SettingsPage()),
+  _Dest('Ajustes', Icons.tune_outlined, Icons.tune, SettingsPage()),
 ];
 
-/// Abas embaixo no celular; no computador, abas de fichário na lateral.
+/// Chassi do app: barra lateral (computador) ou barra inferior (celular),
+/// botão Lançar, atalhos de teclado e paleta de comandos.
 class Shell extends StatefulWidget {
   const Shell({super.key});
 
@@ -60,54 +68,320 @@ class _ShellState extends State<Shell> {
   int _index = 0;
 
   @override
+  void initState() {
+    super.initState();
+    monthNav.openPalette = _palette;
+  }
+
+  void _goTab(int i) => setState(() => _index = i);
+  void _palette() => showCommandPalette(context, goTab: _goTab);
+  void _newExpense() => showEntryForm(context, date: monthNav.defaultDate);
+  void _newIncome() => showEntryForm(context, type: EntryType.receita, date: monthNav.defaultDate);
+
+  Map<ShortcutActivator, VoidCallback> get _shortcuts => {
+    const SingleActivator(LogicalKeyboardKey.keyK, control: true): _palette,
+    const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _palette,
+    const SingleActivator(LogicalKeyboardKey.keyN): _newExpense,
+    const SingleActivator(LogicalKeyboardKey.keyE): _newIncome,
+    const SingleActivator(LogicalKeyboardKey.keyT): () {
+      _goTab(0);
+      monthNav.goToday();
+    },
+    const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _index == 0 ? monthNav.go(-1) : null,
+    const SingleActivator(LogicalKeyboardKey.arrowRight): () => _index == 0 ? monthNav.go(1) : null,
+    for (var i = 0; i < _destinations.length; i++)
+      SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i)): () => _goTab(i),
+  };
+
+  @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final p = Paper.of(context);
-    final body = Column(
+    final showLaunch = _index <= 1;
+    final pages = Stack(
       children: [
-        const UpdateBanner(),
-        Expanded(
-          child: IndexedStack(index: _index, children: [for (final d in _destinations) d.page]),
+        Column(
+          children: [
+            const UpdateBanner(),
+            Expanded(
+              child: IndexedStack(index: _index, children: [for (final d in _destinations) d.page]),
+            ),
+          ],
         ),
+        if (showLaunch)
+          Positioned(
+            right: wide ? 28 : 16,
+            bottom: wide ? 24 : 16,
+            child: _LaunchButton(onPressed: _newExpense, showKey: wide && isDesktop),
+          ),
       ],
     );
 
-    if (!wide) {
-      return Scaffold(
-        body: SafeArea(child: body),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: [
-            for (final d in _destinations)
-              NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: d.label),
-          ],
-        ),
-      );
-    }
+    final body = wide
+        ? Row(
+            children: [
+              _Sidebar(index: _index, onSelect: _goTab, onSearch: _palette),
+              VerticalDivider(width: 1, color: hairline(p)),
+              Expanded(child: pages),
+            ],
+          )
+        : Column(
+            children: [
+              Expanded(child: SafeArea(bottom: false, child: pages)),
+              _TabBar(index: _index, onSelect: _goTab),
+            ],
+          );
 
-    return Scaffold(
-      body: Row(
+    return CallbackShortcuts(
+      bindings: _shortcuts,
+      child: Focus(autofocus: true, child: Scaffold(body: body)),
+    );
+  }
+}
+
+/// Barra lateral no estilo Arc/Raycast: marca, busca (⌘K) e itens discretos.
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({required this.index, required this.onSelect, required this.onSearch});
+  final int index;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return Container(
+      width: 236,
+      color: p.paperShade,
+      padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          NavigationRail(
-            extended: true,
-            minExtendedWidth: 200,
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            leading: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
-              child: Text(
-                '📒 $appName',
-                style: p.hand(30, color: p.redInk, weight: FontWeight.w700),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+            child: Text(
+              '📒 $appName',
+              style: p.hand(28, color: p.redInk, weight: FontWeight.w700),
             ),
-            destinations: [
-              for (final d in _destinations)
-                NavigationRailDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: Text(d.label)),
+          ),
+          _SidebarSearch(onTap: onSearch),
+          const SizedBox(height: 14),
+          for (var i = 0; i < _destinations.length; i++)
+            _SidebarItem(dest: _destinations[i], selected: i == index, shortcut: '${i + 1}', onTap: () => onSelect(i)),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'N gasto · E entrada · ← → mês',
+              style: TextStyle(fontSize: 11.5, color: p.pencil.withValues(alpha: 0.8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarSearch extends StatelessWidget {
+  const _SidebarSearch({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return Material(
+      color: p.paper.withValues(alpha: 0.7),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: hairline(p)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 16, color: p.pencil),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Buscar…', style: TextStyle(fontSize: 13.5, color: p.pencil)),
+              ),
+              if (isDesktop) Kbd([Kbd.mod, 'K']),
             ],
           ),
-          Expanded(child: body),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarItem extends StatefulWidget {
+  const _SidebarItem({required this.dest, required this.selected, required this.shortcut, required this.onTap});
+  final _Dest dest;
+  final bool selected;
+  final String shortcut;
+  final VoidCallback onTap;
+
+  @override
+  State<_SidebarItem> createState() => _SidebarItemState();
+}
+
+class _SidebarItemState extends State<_SidebarItem> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    final selected = widget.selected;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: selected
+                  ? p.paper
+                  : _hover
+                  ? p.ink.withValues(alpha: 0.05)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: selected ? hairline(p) : Colors.transparent),
+              boxShadow: selected
+                  ? const [BoxShadow(color: Color(0x14000000), blurRadius: 3, offset: Offset(0, 1))]
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? widget.dest.selectedIcon : widget.dest.icon,
+                  size: 18,
+                  color: selected ? p.ink : p.pencil,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.dest.label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      color: selected ? p.ink : p.pencil,
+                    ),
+                  ),
+                ),
+                if (_hover && isDesktop) Kbd([widget.shortcut]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Barra inferior do celular: ícone + rótulo, sem "pílula" do Android.
+class _TabBar extends StatelessWidget {
+  const _TabBar({required this.index, required this.onSelect});
+  final int index;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: p.paperShade,
+        border: Border(top: BorderSide(color: hairline(p))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            children: [
+              for (var i = 0; i < _destinations.length; i++)
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onSelect(i);
+                    },
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedScale(
+                          scale: i == index ? 1.08 : 1,
+                          duration: const Duration(milliseconds: 140),
+                          child: Icon(
+                            i == index ? _destinations[i].selectedIcon : _destinations[i].icon,
+                            size: 22,
+                            color: i == index ? p.ink : p.pencil.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _destinations[i].label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: i == index ? FontWeight.w600 : FontWeight.w500,
+                            color: i == index ? p.ink : p.pencil.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Botão principal: tinta escura, cantos suaves, atalho visível no computador.
+class _LaunchButton extends StatelessWidget {
+  const _LaunchButton({required this.onPressed, required this.showKey});
+  final VoidCallback onPressed;
+  final bool showKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return Material(
+      color: p.ink,
+      elevation: 6,
+      shadowColor: Colors.black38,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: p.paper.withValues(alpha: 0.08),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.edit_outlined, size: 17, color: p.paper),
+              const SizedBox(width: 8),
+              Text(
+                'Lançar',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.paper),
+              ),
+              if (showKey) ...[
+                const SizedBox(width: 8),
+                const Kbd(['N'], inverted: true),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

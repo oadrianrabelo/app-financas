@@ -38,6 +38,10 @@ flutter:
   # Para adicionar outra: coloque o .ttf em assets/fonts/<nome>/, declare aqui
   # e registre em lib/ui/theme/fonts.dart.
   fonts:
+    # Interface (botões, menus, formulários)
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter/Inter-Variable.ttf
     - family: Caveat
       fonts:
         - asset: assets/fonts/caveat/Caveat-Variable.ttf
