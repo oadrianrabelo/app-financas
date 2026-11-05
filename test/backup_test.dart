@@ -25,7 +25,8 @@ void main() {
     // primeira "sincronização": o lançamento vai para o PC, categorias não duplicam
     final first = await importData(pc, await exportData(celular));
     expect(first.added, 1);
-    expect((await pc.watchCategories().first).length, 13);
+    final seeded = (await celular.watchCategories().first).length;
+    expect((await pc.watchCategories().first).length, seeded);
 
     final acc = (await celular.select(celular.accounts).get()).first;
     await (pc.update(pc.accounts)..where((a) => a.id.equals(acc.id))).write(
@@ -40,7 +41,7 @@ void main() {
     expect(second.updated, 2);
     final pcAcc = await (pc.select(pc.accounts)..where((a) => a.id.equals(acc.id))).getSingle();
     expect(pcAcc.name, 'Celular (novo)');
-    expect((await pc.watchCategories().first).length, 12); // a exclusão viajou
+    expect((await pc.watchCategories().first).length, seeded - 1); // a exclusão viajou
   });
 
   test('recusa arquivos que não são backup', () async {

@@ -20,26 +20,63 @@ int accountBalance(Account account, Iterable<Entry> entries) {
   return balance;
 }
 
+/// A página do mês, como no caderno:
+///   Entradas − Dízimo − Oferta = Disponível
+///   Disponível − (Cartão + Casa + Pessoal + Outros) = Sobrou
 class MonthSummary {
-  int income = 0;
-  int expense = 0;
-  int pending = 0; // despesas ainda não pagas no mês
-  final Map<String?, int> byCategory = {}; // despesas por categoria (null = sem categoria)
+  final List<Entry> incomes = [];
+  final List<Entry> tithes = [];
+  final List<Entry> offerings = [];
 
-  int get balance => income - expense;
+  /// Gastos por seção, na ordem do caderno (sem as primícias).
+  final Map<CategorySection, List<Entry>> sections = {
+    CategorySection.cartao: [],
+    CategorySection.casa: [],
+    CategorySection.pessoal: [],
+    CategorySection.outros: [],
+  };
+
+  int get income => _sum(incomes);
+  int get tithe => _sum(tithes);
+  int get offering => _sum(offerings);
+
+  /// O que temos depois de tirar o que é de Deus. É daqui que se conta.
+  int get available => income - tithe - offering;
+  int sectionTotal(CategorySection s) => _sum(sections[s]!);
+  int get expense => sections.values.fold(0, (sum, list) => sum + _sum(list));
+  int get left => available - expense;
+
+  /// Gastos (e primícias) ainda não pagos/entregues.
+  int get unpaid => [
+    ...tithes,
+    ...offerings,
+    for (final l in sections.values) ...l,
+  ].where((e) => !e.paid).fold(0, (s, e) => s + e.amount);
+
+  static int _sum(List<Entry> l) => l.fold(0, (s, e) => s + e.amount);
 }
 
-/// Resumo de um mês ("AAAA-MM"). Transferências não contam como receita/despesa.
-MonthSummary monthSummary(Iterable<Entry> entries, String month) {
+/// Resumo de um mês ("AAAA-MM"). Transferências não entram (o dinheiro só muda de lugar).
+MonthSummary monthSummary(Iterable<Entry> entries, Iterable<Category> categories, String month) {
+  final sectionOf = {for (final c in categories) c.id: c.section};
   final s = MonthSummary();
   for (final e in entries) {
     if (e.deletedAt != null || !e.date.startsWith(month)) continue;
-    if (e.type == EntryType.receita) s.income += e.amount;
-    if (e.type == EntryType.despesa) {
-      s.expense += e.amount;
-      if (!e.paid) s.pending += e.amount;
-      s.byCategory.update(e.categoryId, (v) => v + e.amount, ifAbsent: () => e.amount);
+    switch (e.type) {
+      case EntryType.receita:
+        s.incomes.add(e);
+      case EntryType.despesa when e.categoryId == dizimoCategoryId:
+        s.tithes.add(e);
+      case EntryType.despesa when e.categoryId == ofertaCategoryId:
+        s.offerings.add(e);
+      case EntryType.despesa:
+        final section = sectionOf[e.categoryId] ?? CategorySection.outros;
+        s.sections[section == CategorySection.primicias ? CategorySection.outros : section]!.add(e);
+      case EntryType.transferencia:
     }
+  }
+  for (final l in [s.incomes, s.tithes, s.offerings, ...s.sections.values]) {
+    l.sort((a, b) => a.date.compareTo(b.date) != 0 ? a.date.compareTo(b.date) : a.createdAt.compareTo(b.createdAt));
   }
   return s;
 }

@@ -33,3 +33,43 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Fontes embutidas (offline). Licença OFL em assets/fonts/*/OFL.txt.
+  # Para adicionar outra: coloque o .ttf em assets/fonts/<nome>/, declare aqui
+  # e registre em lib/ui/theme/fonts.dart.
+  fonts:
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/caveat/Caveat-Variable.ttf
+    - family: Kalam
+      fonts:
+        - asset: assets/fonts/kalam/Kalam-Regular.ttf
+        - asset: assets/fonts/kalam/Kalam-Bold.ttf
+          weight: 700
+    - family: Patrick Hand
+      fonts:
+        - asset: assets/fonts/patrick_hand/PatrickHand-Regular.ttf
+    - family: Gochi Hand
+      fonts:
+        - asset: assets/fonts/gochi_hand/GochiHand-Regular.ttf
+    - family: Indie Flower
+      fonts:
+        - asset: assets/fonts/indie_flower/IndieFlower-Regular.ttf
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/jetbrains_mono/JetBrainsMono-Variable.ttf
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/ibm_plex_mono/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/ibm_plex_mono/IBMPlexMono-SemiBold.ttf
+          weight: 600
+    - family: Courier Prime
+      fonts:
+        - asset: assets/fonts/courier_prime/CourierPrime-Regular.ttf
+        - asset: assets/fonts/courier_prime/CourierPrime-Bold.ttf
+          weight: 700
+    - family: Space Mono
+      fonts:
+        - asset: assets/fonts/space_mono/SpaceMono-Regular.ttf
+        - asset: assets/fonts/space_mono/SpaceMono-Bold.ttf
+          weight: 700
