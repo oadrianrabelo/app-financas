@@ -4,12 +4,25 @@ App de finanças pessoal, **offline** e **privado**: os dados ficam num SQLite n
 Feito em **Flutter**, um código só para **Android, Windows e Linux**, com **release e
 atualização automáticos**.
 
+O mês funciona como a página do caderno:
+
+```
+Entradas − Dízimo − Oferta = Disponível      (sempre se conta a partir do Disponível)
+Disponível − (Cartão + Casa + Pessoal + Outros) = Sobrou
+```
+
+- **Separar dízimo e oferta** é um botão, nunca automático: ao lançar uma entrada o app pergunta
+  ("Separar agora?", com Ajustar… para mudar % ou valor na hora). O que ficou para depois aparece
+  num post-it na página do mês. Entradas como empréstimo que voltou podem ser marcadas "sem dízimo".
+- Dízimo e oferta nascem **a entregar** (○); toque para marcar ✓ quando entregar.
+- Tema de **papel pautado** (ou Noite), com letra de mão e fonte dos números escolhíveis nos Ajustes.
+
 ## Começando
 
 ```bash
 flutter pub get
 flutter run -d linux        # ou: -d windows, ou com o celular plugado
-flutter test                # regras de dinheiro, saldo, backup e assinatura
+flutter test                # dinheiro, dízimo, resumo do mês, backup, migrações, assinatura
 dart run build_runner build # depois de mexer nas tabelas (lib/data/database.dart)
 ```
 
@@ -20,12 +33,19 @@ lib/
   core/money.dart        dinheiro em centavos: formatar e interpretar "1.234,56"
   core/dates.dart        datas como "AAAA-MM-DD"
   data/database.dart     tabelas (drift/SQLite) + leituras e escritas  ← comece por aqui
+  data/database.steps.dart  gerado: passos de migração entre versões do banco
   data/app_data.dart     listas em memória que avisam as telas; AppScope
-  domain/finance.dart    regras puras: saldo da conta, resumo do mês
+  data/prefs.dart        preferências do aparelho (%, fontes, tema)
+  domain/finance.dart    regras puras: saldo da conta, página do mês (disponível, seções, sobra)
+  domain/tithe.dart      regras puras: dízimo e oferta (percentuais, pendentes)
   backup/backup.dart     exportar/importar JSON com mesclagem
   updates/               atualização automática (manifesto assinado + instalação)
-  ui/pages/              Início, Lançamentos, Contas, Ajustes
-  ui/widgets/            formulário de lançamento, banner de atualização, comuns
+  ui/pages/              Mês (o caderno), Lançamentos, Contas, Ajustes
+  ui/theme/              tema de papel (cores, pauta) e lista de fontes
+  ui/widgets/ledger.dart peças da folha: pauta, títulos, linhas com ✓, post-it
+  ui/widgets/            formulário de lançamento, "Separar dízimo e oferta", banner de atualização
+assets/fonts/            fontes embutidas (licença OFL em cada pasta)
+drift_schemas/           o esquema de cada versão do banco (para testar migrações)
 tool/                    scripts Dart: gerar chaves, montar o latest.json
 packaging/               ícone, instalador do Windows (Inno Setup), AppImage
 android/.../MainActivity.kt   canal nativo que abre o instalador do APK
@@ -35,7 +55,11 @@ android/.../MainActivity.kt   canal nativo que abre o instalador do APK
 - **Dinheiro em centavos (`int`).** Nunca `double`.
 - **IDs UUID + `updatedAt` + `deletedAt`** (exclusão lógica). É o que permite juntar os dados de
   dois aparelhos sem bagunça. As categorias padrão têm IDs fixos, então não duplicam na mesclagem.
-- **Mudou uma tabela?** Rode o `build_runner`, suba o `schemaVersion` e escreva a migração.
+- **Mudou uma tabela?** Nunca apague dados de quem já usa o app:
+  1. Edite a tabela em `database.dart` e suba o `schemaVersion`.
+  2. `dart run build_runner build` e depois `dart run drift_dev make-migrations`.
+  3. Escreva o passo `fromXToY` em `migration` e rode `flutter test test/drift`: ele confere que
+     a migração chega exatamente no esquema novo, com dados.
 
 ## Release e atualização automática
 
@@ -98,6 +122,17 @@ Ajustes → **Exportar backup** num aparelho → mande o arquivo → **Importar*
 A importação junta tudo: vence a edição mais recente, e as exclusões também passam.
 
 ## Ideias para evoluir
+
+**Já feito**
+- [x] Página do mês no formato do caderno (Disponível, seções, Sobrou)
+- [x] Botão "Separar dízimo e oferta", com ajuste na hora e entradas sem dízimo
+- [x] Tema de papel, modo Noite e fontes escolhíveis
+
+**Próximos (combinados)**
+- [ ] Contas fixas que aparecem sozinhas todo mês (aluguel, internet, luz, academia, pão)
+- [ ] Cartões com fatura e parcelas (1/2, 2/2)
+- [ ] Quem lançou / quem recebeu (Adrian, Andressa) e fontes de renda (salário, alfajor, corridas)
+- [ ] "Guardado" (reservas, como as férias) e "A receber" (o adiantamento emprestado)
 
 **Fáceis**
 - [ ] Editar contas e categorias (hoje só cria, arquiva e exclui)

@@ -605,6 +605,15 @@ class $CategoriesTable extends Categories
     requiredDuringInsert: true,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<CategorySection?, String>
+  section = GeneratedColumn<String>(
+    'section',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<CategorySection?>($CategoriesTable.$convertersectionn);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     createdAt,
@@ -614,6 +623,7 @@ class $CategoriesTable extends Categories
     kind,
     icon,
     color,
+    section,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -721,6 +731,12 @@ class $CategoriesTable extends Categories
         DriftSqlType.int,
         data['${effectivePrefix}color'],
       )!,
+      section: $CategoriesTable.$convertersectionn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}section'],
+        ),
+      ),
     );
   }
 
@@ -731,6 +747,10 @@ class $CategoriesTable extends Categories
 
   static JsonTypeConverter2<CategoryKind, String, String> $converterkind =
       const EnumNameConverter<CategoryKind>(CategoryKind.values);
+  static JsonTypeConverter2<CategorySection, String, String> $convertersection =
+      const EnumNameConverter<CategorySection>(CategorySection.values);
+  static JsonTypeConverter2<CategorySection?, String?, String?>
+  $convertersectionn = JsonTypeConverter2.asNullable($convertersection);
 }
 
 class Category extends DataClass implements Insertable<Category> {
@@ -742,6 +762,7 @@ class Category extends DataClass implements Insertable<Category> {
   final CategoryKind kind;
   final String icon;
   final int color;
+  final CategorySection? section;
   const Category({
     required this.id,
     required this.createdAt,
@@ -751,6 +772,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.kind,
     required this.icon,
     required this.color,
+    this.section,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -769,6 +791,11 @@ class Category extends DataClass implements Insertable<Category> {
     }
     map['icon'] = Variable<String>(icon);
     map['color'] = Variable<int>(color);
+    if (!nullToAbsent || section != null) {
+      map['section'] = Variable<String>(
+        $CategoriesTable.$convertersectionn.toSql(section),
+      );
+    }
     return map;
   }
 
@@ -784,6 +811,9 @@ class Category extends DataClass implements Insertable<Category> {
       kind: Value(kind),
       icon: Value(icon),
       color: Value(color),
+      section: section == null && nullToAbsent
+          ? const Value.absent()
+          : Value(section),
     );
   }
 
@@ -803,6 +833,9 @@ class Category extends DataClass implements Insertable<Category> {
       ),
       icon: serializer.fromJson<String>(json['icon']),
       color: serializer.fromJson<int>(json['color']),
+      section: $CategoriesTable.$convertersectionn.fromJson(
+        serializer.fromJson<String?>(json['section']),
+      ),
     );
   }
   @override
@@ -819,6 +852,9 @@ class Category extends DataClass implements Insertable<Category> {
       ),
       'icon': serializer.toJson<String>(icon),
       'color': serializer.toJson<int>(color),
+      'section': serializer.toJson<String?>(
+        $CategoriesTable.$convertersectionn.toJson(section),
+      ),
     };
   }
 
@@ -831,6 +867,7 @@ class Category extends DataClass implements Insertable<Category> {
     CategoryKind? kind,
     String? icon,
     int? color,
+    Value<CategorySection?> section = const Value.absent(),
   }) => Category(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -840,6 +877,7 @@ class Category extends DataClass implements Insertable<Category> {
     kind: kind ?? this.kind,
     icon: icon ?? this.icon,
     color: color ?? this.color,
+    section: section.present ? section.value : this.section,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -851,6 +889,7 @@ class Category extends DataClass implements Insertable<Category> {
       kind: data.kind.present ? data.kind.value : this.kind,
       icon: data.icon.present ? data.icon.value : this.icon,
       color: data.color.present ? data.color.value : this.color,
+      section: data.section.present ? data.section.value : this.section,
     );
   }
 
@@ -864,14 +903,24 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('name: $name, ')
           ..write('kind: $kind, ')
           ..write('icon: $icon, ')
-          ..write('color: $color')
+          ..write('color: $color, ')
+          ..write('section: $section')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, createdAt, updatedAt, deletedAt, name, kind, icon, color);
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    name,
+    kind,
+    icon,
+    color,
+    section,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -883,7 +932,8 @@ class Category extends DataClass implements Insertable<Category> {
           other.name == this.name &&
           other.kind == this.kind &&
           other.icon == this.icon &&
-          other.color == this.color);
+          other.color == this.color &&
+          other.section == this.section);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -895,6 +945,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<CategoryKind> kind;
   final Value<String> icon;
   final Value<int> color;
+  final Value<CategorySection?> section;
   final Value<int> rowid;
   const CategoriesCompanion({
     this.id = const Value.absent(),
@@ -905,6 +956,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.kind = const Value.absent(),
     this.icon = const Value.absent(),
     this.color = const Value.absent(),
+    this.section = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CategoriesCompanion.insert({
@@ -916,6 +968,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required CategoryKind kind,
     required String icon,
     required int color,
+    this.section = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -933,6 +986,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? kind,
     Expression<String>? icon,
     Expression<int>? color,
+    Expression<String>? section,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -944,6 +998,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (kind != null) 'kind': kind,
       if (icon != null) 'icon': icon,
       if (color != null) 'color': color,
+      if (section != null) 'section': section,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -957,6 +1012,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<CategoryKind>? kind,
     Value<String>? icon,
     Value<int>? color,
+    Value<CategorySection?>? section,
     Value<int>? rowid,
   }) {
     return CategoriesCompanion(
@@ -968,6 +1024,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       kind: kind ?? this.kind,
       icon: icon ?? this.icon,
       color: color ?? this.color,
+      section: section ?? this.section,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1001,6 +1058,11 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (color.present) {
       map['color'] = Variable<int>(color.value);
     }
+    if (section.present) {
+      map['section'] = Variable<String>(
+        $CategoriesTable.$convertersectionn.toSql(section.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1018,6 +1080,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('kind: $kind, ')
           ..write('icon: $icon, ')
           ..write('color: $color, ')
+          ..write('section: $section, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1166,6 +1229,26 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<TitheStatus?, String>
+  titheStatus = GeneratedColumn<String>(
+    'tithe_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<TitheStatus?>($EntriesTable.$convertertitheStatusn);
+  static const VerificationMeta _percentBpMeta = const VerificationMeta(
+    'percentBp',
+  );
+  @override
+  late final GeneratedColumn<int> percentBp = GeneratedColumn<int>(
+    'percent_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     createdAt,
@@ -1180,6 +1263,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     categoryId,
     paid,
     notes,
+    titheStatus,
+    percentBp,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1280,6 +1365,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('percent_bp')) {
+      context.handle(
+        _percentBpMeta,
+        percentBp.isAcceptableOrUnknown(data['percent_bp']!, _percentBpMeta),
+      );
+    }
     return context;
   }
 
@@ -1343,6 +1434,16 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      titheStatus: $EntriesTable.$convertertitheStatusn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}tithe_status'],
+        ),
+      ),
+      percentBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}percent_bp'],
+      ),
     );
   }
 
@@ -1353,6 +1454,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
 
   static JsonTypeConverter2<EntryType, String, String> $convertertype =
       const EnumNameConverter<EntryType>(EntryType.values);
+  static JsonTypeConverter2<TitheStatus, String, String> $convertertitheStatus =
+      const EnumNameConverter<TitheStatus>(TitheStatus.values);
+  static JsonTypeConverter2<TitheStatus?, String?, String?>
+  $convertertitheStatusn = JsonTypeConverter2.asNullable($convertertitheStatus);
 }
 
 class Entry extends DataClass implements Insertable<Entry> {
@@ -1369,6 +1474,8 @@ class Entry extends DataClass implements Insertable<Entry> {
   final String? categoryId;
   final bool paid;
   final String? notes;
+  final TitheStatus? titheStatus;
+  final int? percentBp;
   const Entry({
     required this.id,
     required this.createdAt,
@@ -1383,6 +1490,8 @@ class Entry extends DataClass implements Insertable<Entry> {
     this.categoryId,
     required this.paid,
     this.notes,
+    this.titheStatus,
+    this.percentBp,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1410,6 +1519,14 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || titheStatus != null) {
+      map['tithe_status'] = Variable<String>(
+        $EntriesTable.$convertertitheStatusn.toSql(titheStatus),
+      );
+    }
+    if (!nullToAbsent || percentBp != null) {
+      map['percent_bp'] = Variable<int>(percentBp);
+    }
     return map;
   }
 
@@ -1436,6 +1553,12 @@ class Entry extends DataClass implements Insertable<Entry> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      titheStatus: titheStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titheStatus),
+      percentBp: percentBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(percentBp),
     );
   }
 
@@ -1460,6 +1583,10 @@ class Entry extends DataClass implements Insertable<Entry> {
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       paid: serializer.fromJson<bool>(json['paid']),
       notes: serializer.fromJson<String?>(json['notes']),
+      titheStatus: $EntriesTable.$convertertitheStatusn.fromJson(
+        serializer.fromJson<String?>(json['titheStatus']),
+      ),
+      percentBp: serializer.fromJson<int?>(json['percentBp']),
     );
   }
   @override
@@ -1481,6 +1608,10 @@ class Entry extends DataClass implements Insertable<Entry> {
       'categoryId': serializer.toJson<String?>(categoryId),
       'paid': serializer.toJson<bool>(paid),
       'notes': serializer.toJson<String?>(notes),
+      'titheStatus': serializer.toJson<String?>(
+        $EntriesTable.$convertertitheStatusn.toJson(titheStatus),
+      ),
+      'percentBp': serializer.toJson<int?>(percentBp),
     };
   }
 
@@ -1498,6 +1629,8 @@ class Entry extends DataClass implements Insertable<Entry> {
     Value<String?> categoryId = const Value.absent(),
     bool? paid,
     Value<String?> notes = const Value.absent(),
+    Value<TitheStatus?> titheStatus = const Value.absent(),
+    Value<int?> percentBp = const Value.absent(),
   }) => Entry(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -1512,6 +1645,8 @@ class Entry extends DataClass implements Insertable<Entry> {
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     paid: paid ?? this.paid,
     notes: notes.present ? notes.value : this.notes,
+    titheStatus: titheStatus.present ? titheStatus.value : this.titheStatus,
+    percentBp: percentBp.present ? percentBp.value : this.percentBp,
   );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -1534,6 +1669,10 @@ class Entry extends DataClass implements Insertable<Entry> {
           : this.categoryId,
       paid: data.paid.present ? data.paid.value : this.paid,
       notes: data.notes.present ? data.notes.value : this.notes,
+      titheStatus: data.titheStatus.present
+          ? data.titheStatus.value
+          : this.titheStatus,
+      percentBp: data.percentBp.present ? data.percentBp.value : this.percentBp,
     );
   }
 
@@ -1552,7 +1691,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('toAccountId: $toAccountId, ')
           ..write('categoryId: $categoryId, ')
           ..write('paid: $paid, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('titheStatus: $titheStatus, ')
+          ..write('percentBp: $percentBp')
           ..write(')'))
         .toString();
   }
@@ -1572,6 +1713,8 @@ class Entry extends DataClass implements Insertable<Entry> {
     categoryId,
     paid,
     notes,
+    titheStatus,
+    percentBp,
   );
   @override
   bool operator ==(Object other) =>
@@ -1589,7 +1732,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.toAccountId == this.toAccountId &&
           other.categoryId == this.categoryId &&
           other.paid == this.paid &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.titheStatus == this.titheStatus &&
+          other.percentBp == this.percentBp);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -1606,6 +1751,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<String?> categoryId;
   final Value<bool> paid;
   final Value<String?> notes;
+  final Value<TitheStatus?> titheStatus;
+  final Value<int?> percentBp;
   final Value<int> rowid;
   const EntriesCompanion({
     this.id = const Value.absent(),
@@ -1621,6 +1768,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.categoryId = const Value.absent(),
     this.paid = const Value.absent(),
     this.notes = const Value.absent(),
+    this.titheStatus = const Value.absent(),
+    this.percentBp = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EntriesCompanion.insert({
@@ -1637,6 +1786,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.categoryId = const Value.absent(),
     this.paid = const Value.absent(),
     this.notes = const Value.absent(),
+    this.titheStatus = const Value.absent(),
+    this.percentBp = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -1659,6 +1810,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<String>? categoryId,
     Expression<bool>? paid,
     Expression<String>? notes,
+    Expression<String>? titheStatus,
+    Expression<int>? percentBp,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1675,6 +1828,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (categoryId != null) 'category_id': categoryId,
       if (paid != null) 'paid': paid,
       if (notes != null) 'notes': notes,
+      if (titheStatus != null) 'tithe_status': titheStatus,
+      if (percentBp != null) 'percent_bp': percentBp,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1693,6 +1848,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<String?>? categoryId,
     Value<bool>? paid,
     Value<String?>? notes,
+    Value<TitheStatus?>? titheStatus,
+    Value<int?>? percentBp,
     Value<int>? rowid,
   }) {
     return EntriesCompanion(
@@ -1709,6 +1866,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       categoryId: categoryId ?? this.categoryId,
       paid: paid ?? this.paid,
       notes: notes ?? this.notes,
+      titheStatus: titheStatus ?? this.titheStatus,
+      percentBp: percentBp ?? this.percentBp,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1757,6 +1916,14 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (titheStatus.present) {
+      map['tithe_status'] = Variable<String>(
+        $EntriesTable.$convertertitheStatusn.toSql(titheStatus.value),
+      );
+    }
+    if (percentBp.present) {
+      map['percent_bp'] = Variable<int>(percentBp.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1779,6 +1946,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('categoryId: $categoryId, ')
           ..write('paid: $paid, ')
           ..write('notes: $notes, ')
+          ..write('titheStatus: $titheStatus, ')
+          ..write('percentBp: $percentBp, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2254,6 +2423,211 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   }
 }
 
+class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Setting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  Setting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Setting(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  $SettingsTable createAlias(String alias) {
+    return $SettingsTable(attachedDatabase, alias);
+  }
+}
+
+class Setting extends DataClass implements Insertable<Setting> {
+  final String key;
+  final String value;
+  const Setting({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  SettingsCompanion toCompanion(bool nullToAbsent) {
+    return SettingsCompanion(key: Value(key), value: Value(value));
+  }
+
+  factory Setting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Setting(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  Setting copyWith({String? key, String? value}) =>
+      Setting(key: key ?? this.key, value: value ?? this.value);
+  Setting copyWithCompanion(SettingsCompanion data) {
+    return Setting(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Setting(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Setting && other.key == this.key && other.value == this.value);
+}
+
+class SettingsCompanion extends UpdateCompanion<Setting> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const SettingsCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SettingsCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<Setting> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SettingsCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return SettingsCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingsCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2261,6 +2635,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $EntriesTable entries = $EntriesTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
+  late final $SettingsTable settings = $SettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2270,6 +2645,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     categories,
     entries,
     budgets,
+    settings,
   ];
 }
 
@@ -2543,6 +2919,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required CategoryKind kind,
   required String icon,
   required int color,
+  Value<CategorySection?> section,
   Value<int> rowid,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
@@ -2554,6 +2931,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<CategoryKind> kind,
   Value<String> icon,
   Value<int> color,
+  Value<CategorySection?> section,
   Value<int> rowid,
 });
 
@@ -2606,6 +2984,12 @@ class $$CategoriesTableFilterComposer
     column: $table.color,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<CategorySection?, CategorySection, String>
+  get section => $composableBuilder(
+    column: $table.section,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$CategoriesTableOrderingComposer
@@ -2656,6 +3040,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.color,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get section => $composableBuilder(
+    column: $table.section,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -2690,6 +3079,9 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<int> get color =>
       $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<CategorySection?, String> get section =>
+      $composableBuilder(column: $table.section, builder: (column) => column);
 }
 
 class $$CategoriesTableTableManager
@@ -2728,6 +3120,7 @@ class $$CategoriesTableTableManager
                 Value<CategoryKind> kind = const Value.absent(),
                 Value<String> icon = const Value.absent(),
                 Value<int> color = const Value.absent(),
+                Value<CategorySection?> section = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
@@ -2738,6 +3131,7 @@ class $$CategoriesTableTableManager
                 kind: kind,
                 icon: icon,
                 color: color,
+                section: section,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2750,6 +3144,7 @@ class $$CategoriesTableTableManager
                 required CategoryKind kind,
                 required String icon,
                 required int color,
+                Value<CategorySection?> section = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
@@ -2760,6 +3155,7 @@ class $$CategoriesTableTableManager
                 kind: kind,
                 icon: icon,
                 color: color,
+                section: section,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2807,6 +3203,8 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<String?> categoryId,
   Value<bool> paid,
   Value<String?> notes,
+  Value<TitheStatus?> titheStatus,
+  Value<int?> percentBp,
   Value<int> rowid,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
@@ -2823,6 +3221,8 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<String?> categoryId,
   Value<bool> paid,
   Value<String?> notes,
+  Value<TitheStatus?> titheStatus,
+  Value<int?> percentBp,
   Value<int> rowid,
 });
 
@@ -2900,6 +3300,17 @@ class $$EntriesTableFilterComposer
     column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<TitheStatus?, TitheStatus, String>
+  get titheStatus => $composableBuilder(
+    column: $table.titheStatus,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get percentBp => $composableBuilder(
+    column: $table.percentBp,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$EntriesTableOrderingComposer
@@ -2975,6 +3386,16 @@ class $$EntriesTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get titheStatus => $composableBuilder(
+    column: $table.titheStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get percentBp => $composableBuilder(
+    column: $table.percentBp,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$EntriesTableAnnotationComposer
@@ -3030,6 +3451,15 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<TitheStatus?, String> get titheStatus =>
+      $composableBuilder(
+        column: $table.titheStatus,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get percentBp =>
+      $composableBuilder(column: $table.percentBp, builder: (column) => column);
 }
 
 class $$EntriesTableTableManager
@@ -3073,6 +3503,8 @@ class $$EntriesTableTableManager
                 Value<String?> categoryId = const Value.absent(),
                 Value<bool> paid = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<TitheStatus?> titheStatus = const Value.absent(),
+                Value<int?> percentBp = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
@@ -3088,6 +3520,8 @@ class $$EntriesTableTableManager
                 categoryId: categoryId,
                 paid: paid,
                 notes: notes,
+                titheStatus: titheStatus,
+                percentBp: percentBp,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3105,6 +3539,8 @@ class $$EntriesTableTableManager
                 Value<String?> categoryId = const Value.absent(),
                 Value<bool> paid = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<TitheStatus?> titheStatus = const Value.absent(),
+                Value<int?> percentBp = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
@@ -3120,6 +3556,8 @@ class $$EntriesTableTableManager
                 categoryId: categoryId,
                 paid: paid,
                 notes: notes,
+                titheStatus: titheStatus,
+                percentBp: percentBp,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3396,6 +3834,140 @@ typedef $$BudgetsTableProcessedTableManager =
       Budget,
       PrefetchHooks Function()
     >;
+typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
+  required String key,
+  required String value,
+  Value<int> rowid,
+});
+typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
+  Value<String> key,
+  Value<String> value,
+  Value<int> rowid,
+});
+
+class $$SettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$SettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SettingsTable,
+          Setting,
+          $$SettingsTableFilterComposer,
+          $$SettingsTableOrderingComposer,
+          $$SettingsTableAnnotationComposer,
+          $$SettingsTableCreateCompanionBuilder,
+          $$SettingsTableUpdateCompanionBuilder,
+          (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+          Setting,
+          PrefetchHooks Function()
+        > {
+  $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<String> value = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) => SettingsCompanion(key: key, value: value, rowid: rowid),
+          createCompanionCallback: ({
+            required String key,
+            required String value,
+            Value<int> rowid = const Value.absent(),
+          }) => SettingsCompanion.insert(key: key, value: value, rowid: rowid),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SettingsTable, Setting>(table),
+                  BaseReferences<_$AppDatabase, $SettingsTable, Setting>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SettingsTable,
+      Setting,
+      $$SettingsTableFilterComposer,
+      $$SettingsTableOrderingComposer,
+      $$SettingsTableAnnotationComposer,
+      $$SettingsTableCreateCompanionBuilder,
+      $$SettingsTableUpdateCompanionBuilder,
+      (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+      Setting,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3408,4 +3980,6 @@ class $AppDatabaseManager {
       $$EntriesTableTableManager(_db, _db.entries);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
+  $$SettingsTableTableManager get settings =>
+      $$SettingsTableTableManager(_db, _db.settings);
 }

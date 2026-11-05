@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../updates/updater.dart';
 import 'database.dart';
+import 'prefs.dart';
 
 /// Mantém em memória as listas do banco e avisa as telas quando mudam.
 /// Para um app pessoal (milhares de lançamentos) isso é mais que suficiente
@@ -49,10 +50,18 @@ class AppData extends ChangeNotifier {
 /// Dá acesso ao banco, aos dados e ao atualizador em qualquer tela:
 /// `AppScope.of(context).data`.
 class AppScope extends InheritedWidget {
-  const AppScope({super.key, required this.db, required this.data, required this.updater, required super.child});
+  const AppScope({
+    super.key,
+    required this.db,
+    required this.data,
+    required this.prefs,
+    required this.updater,
+    required super.child,
+  });
 
   final AppDatabase db;
   final AppData data;
+  final Prefs prefs;
   final Updater updater;
 
   static AppScope of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppScope>()!;

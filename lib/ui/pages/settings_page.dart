@@ -8,7 +8,10 @@ import '../../backup/backup.dart';
 import '../../core/dates.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
+import '../../domain/tithe.dart';
 import '../../updates/updater.dart';
+import '../theme/fonts.dart';
+import '../theme/paper.dart';
 import '../widgets/common.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -16,12 +19,178 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PageBody(title: 'Ajustes', children: [_BackupCard(), _UpdatesCard(), _CategoriesCard()]);
+    return const PageBody(
+      title: 'Ajustes',
+      children: [_TitheCard(), _LookCard(), _BackupCard(), _UpdatesCard(), _CategoriesCard()],
+    );
   }
 }
 
 void _toast(BuildContext context, String msg) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+class _TitheCard extends StatelessWidget {
+  const _TitheCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = AppScope.of(context).prefs;
+    Widget field(String label, int bp, Future<void> Function(int) save) =>
+        _PercentField(label: label, bp: bp, onSave: save);
+    return ListenableBuilder(
+      listenable: prefs,
+      builder: (context, _) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Dízimo e oferta', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text(
+                'Valores sugeridos no botão "Separar dízimo e oferta". Ao separar, dá para ajustar na hora; '
+                'o percentual da oferta usado fica lembrado para a próxima vez.',
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 16,
+                children: [
+                  field('Dízimo', prefs.titheBp, prefs.setTitheBp),
+                  field('Oferta', prefs.offeringBp, prefs.setOfferingBp),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Campo de percentual que salva ao sair do campo (ou Enter), sem perder o foco.
+class _PercentField extends StatefulWidget {
+  const _PercentField({required this.label, required this.bp, required this.onSave});
+  final String label;
+  final int bp;
+  final Future<void> Function(int) onSave;
+
+  @override
+  State<_PercentField> createState() => _PercentFieldState();
+}
+
+class _PercentFieldState extends State<_PercentField> {
+  late final _controller = TextEditingController(text: _text(widget.bp));
+  final _focus = FocusNode();
+
+  static String _text(int bp) => formatBp(bp).replaceAll('%', '');
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus) _save();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_PercentField old) {
+    super.didUpdateWidget(old);
+    if (!_focus.hasFocus && old.bp != widget.bp) _controller.text = _text(widget.bp);
+  }
+
+  void _save() {
+    final bp = parseBp(_controller.text);
+    if (bp == null) {
+      _controller.text = _text(widget.bp);
+    } else if (bp != widget.bp) {
+      widget.onSave(bp);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 150,
+    child: TextField(
+      controller: _controller,
+      focusNode: _focus,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(labelText: widget.label, suffixText: '%'),
+      onSubmitted: (_) => _save(),
+      onTapOutside: (_) => _focus.unfocus(),
+    ),
+  );
+}
+
+class _LookCard extends StatelessWidget {
+  const _LookCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = AppScope.of(context).prefs;
+    final p = Paper.of(context);
+    return ListenableBuilder(
+      listenable: prefs,
+      builder: (context, _) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Aparência', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(value: ThemeMode.system, label: Text('Automático')),
+                  ButtonSegment(value: ThemeMode.light, label: Text('Papel')),
+                  ButtonSegment(value: ThemeMode.dark, label: Text('Noite')),
+                ],
+                selected: {prefs.themeMode},
+                onSelectionChanged: (v) => prefs.setThemeMode(v.first),
+              ),
+              const SizedBox(height: 16),
+              const Text('Letra de mão'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final f in handFonts)
+                    ChoiceChip(
+                      label: Text('Setembro', style: p.copyWith(handFont: f).hand(22)),
+                      tooltip: f,
+                      selected: prefs.handFont == f,
+                      onSelected: (_) => prefs.setHandFont(f),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text('Números'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final f in monoFonts)
+                    ChoiceChip(
+                      label: Text(r'R$ 1.234,56', style: p.copyWith(monoFont: f).mono(15)),
+                      tooltip: f,
+                      selected: prefs.monoFont == f,
+                      onSelected: (_) => prefs.setMonoFont(f),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _BackupCard extends StatelessWidget {
   const _BackupCard();
@@ -146,7 +315,9 @@ class _CategoriesCard extends StatelessWidget {
               ListTile(
                 leading: Text(c.icon, style: const TextStyle(fontSize: 22)),
                 title: Text(c.name),
-                subtitle: Text(c.kind == CategoryKind.despesa ? 'Despesa' : 'Receita'),
+                subtitle: Text(
+                  c.kind == CategoryKind.receita ? 'Entrada' : 'Gasto · ${_sectionLabels[c.section] ?? 'Outros'}',
+                ),
                 trailing: IconButton(
                   tooltip: 'Excluir',
                   icon: const Icon(Icons.delete_outline),
@@ -175,6 +346,7 @@ class _NewCategoryDialogState extends State<_NewCategoryDialog> {
   final _name = TextEditingController();
   final _icon = TextEditingController(text: '🏷️');
   CategoryKind _kind = CategoryKind.despesa;
+  CategorySection _section = CategorySection.casa;
 
   @override
   Widget build(BuildContext context) {
@@ -196,11 +368,26 @@ class _NewCategoryDialogState extends State<_NewCategoryDialog> {
             initialValue: _kind,
             decoration: const InputDecoration(labelText: 'Tipo'),
             items: const [
-              DropdownMenuItem(value: CategoryKind.despesa, child: Text('Despesa')),
-              DropdownMenuItem(value: CategoryKind.receita, child: Text('Receita')),
+              DropdownMenuItem(value: CategoryKind.despesa, child: Text('Gasto')),
+              DropdownMenuItem(value: CategoryKind.receita, child: Text('Entrada')),
             ],
             onChanged: (v) => setState(() => _kind = v!),
           ),
+          if (_kind == CategoryKind.despesa)
+            DropdownButtonFormField(
+              initialValue: _section,
+              decoration: const InputDecoration(labelText: 'Seção no caderno'),
+              items: [
+                for (final s in [
+                  CategorySection.cartao,
+                  CategorySection.casa,
+                  CategorySection.pessoal,
+                  CategorySection.outros,
+                ])
+                  DropdownMenuItem(value: s, child: Text(_sectionLabels[s]!)),
+              ],
+              onChanged: (v) => setState(() => _section = v!),
+            ),
         ],
       ),
       actions: [
@@ -214,8 +401,13 @@ class _NewCategoryDialogState extends State<_NewCategoryDialog> {
               0.65,
               0.45,
             ).toColor().toARGB32();
-            await AppScope.of(context).db
-                .addCategory(name: _name.text.trim(), kind: _kind, icon: _icon.text.trim(), color: color);
+            await AppScope.of(context).db.addCategory(
+              name: _name.text.trim(),
+              kind: _kind,
+              icon: _icon.text.trim(),
+              color: color,
+              section: _kind == CategoryKind.despesa ? _section : null,
+            );
             if (context.mounted) Navigator.pop(context);
           },
           child: const Text('Adicionar'),
@@ -224,3 +416,11 @@ class _NewCategoryDialogState extends State<_NewCategoryDialog> {
     );
   }
 }
+
+const _sectionLabels = {
+  CategorySection.primicias: 'Dízimo e oferta',
+  CategorySection.cartao: 'Cartão',
+  CategorySection.casa: 'Casa',
+  CategorySection.pessoal: 'Pessoal',
+  CategorySection.outros: 'Outros',
+};
