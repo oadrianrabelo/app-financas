@@ -1,88 +1,115 @@
 # 🪙 Tostão — finanças da casa
 
-App de finanças pessoal, **offline**, **privado** (os dados ficam só no seu aparelho) e que roda no
-**computador e no celular** com o mesmo código. É um PWA: abre no navegador e pode ser "instalado"
-como app.
+App de finanças pessoal, **offline** e **privado**: os dados ficam num SQLite no próprio aparelho.
+Feito em **Flutter**, um código só para **Android, Windows e Linux**, com **release e
+atualização automáticos**.
 
 ## Começando
 
 ```bash
-npm install
-npm run dev        # abre em http://localhost:5173 (e no IP da rede, p/ testar no celular)
-npm test           # testes das regras de dinheiro, saldo e backup
-npm run build      # gera a versão final em dist/
-npm run preview    # serve o build (é aqui que o modo offline funciona de verdade)
+flutter pub get
+flutter run -d linux        # ou: -d windows, ou com o celular plugado
+flutter test                # regras de dinheiro, saldo, backup e assinatura
+dart run build_runner build # depois de mexer nas tabelas (lib/data/database.dart)
 ```
-
-> O service worker (offline) só funciona no `build`/`preview` ou em produção, não no `dev`.
-
-## Stack (e por quê)
-
-| Peça | Escolha | Por quê |
-|---|---|---|
-| Linguagem | **TypeScript** | Tipos pegam erro de dinheiro/campo antes de rodar. |
-| Interface | **React** | Maior comunidade, muito material em português. |
-| Build | **Vite** | Rápido, zero configuração chata. |
-| Banco local | **IndexedDB via Dexie** | Banco de verdade dentro do navegador, funciona offline. |
-| Offline/instalável | **vite-plugin-pwa** | Gera service worker + manifest sozinho. |
-| Testes | **Vitest** | Mesmo config do Vite. |
-
-Sem biblioteca de rotas, de estado ou de CSS: dá para entender tudo lendo o código.
 
 ## Mapa do código
 
 ```
-src/
-  db.ts          modelo de dados + banco (comece por aqui)
-  money.ts       dinheiro em centavos: formatar e interpretar "1.234,56"
-  dates.ts       datas como "AAAA-MM-DD"
-  finance.ts     regras puras: saldo de conta, resumo do mês
-  backup.ts      exportar/importar JSON com mesclagem
-  hooks.ts       consultas "ao vivo" ao banco para as telas
-  App.tsx        navegação (#inicio, #lancamentos, #contas, #ajustes)
-  pages/         uma tela por arquivo
-  components/    formulário de lançamento, seletor de mês
-  styles.css     tema claro/escuro, layout celular x computador
+lib/
+  core/money.dart        dinheiro em centavos: formatar e interpretar "1.234,56"
+  core/dates.dart        datas como "AAAA-MM-DD"
+  data/database.dart     tabelas (drift/SQLite) + leituras e escritas  ← comece por aqui
+  data/app_data.dart     listas em memória que avisam as telas; AppScope
+  domain/finance.dart    regras puras: saldo da conta, resumo do mês
+  backup/backup.dart     exportar/importar JSON com mesclagem
+  updates/               atualização automática (manifesto assinado + instalação)
+  ui/pages/              Início, Lançamentos, Contas, Ajustes
+  ui/widgets/            formulário de lançamento, banner de atualização, comuns
+tool/                    scripts Dart: gerar chaves, montar o latest.json
+packaging/               ícone, instalador do Windows (Inno Setup), AppImage
+android/.../MainActivity.kt   canal nativo que abre o instalador do APK
 ```
 
 ### Regras importantes já embutidas
-- **Dinheiro em centavos inteiros.** Nunca `float`.
-- **IDs UUID + `updatedAt` + `deletedAt`** (exclusão "lógica"). Isso é o que permite
-  mesclar dados de dois aparelhos sem bagunça — é a base da sincronização.
-- **Mudou o esquema do banco?** Crie `this.version(2)` em `db.ts`; nunca edite a versão 1.
+- **Dinheiro em centavos (`int`).** Nunca `double`.
+- **IDs UUID + `updatedAt` + `deletedAt`** (exclusão lógica). É o que permite juntar os dados de
+  dois aparelhos sem bagunça. As categorias padrão têm IDs fixos, então não duplicam na mesclagem.
+- **Mudou uma tabela?** Rode o `build_runner`, suba o `schemaVersion` e escreva a migração.
 
-## Usar no celular e compartilhar com a esposa
+## Release e atualização automática
 
-1. **Publicar o app** (é só HTML/JS, os dados NÃO vão para o servidor): `npm run build` e suba a
-   pasta `dist/` no Cloudflare Pages, Netlify ou Vercel (grátis). Celular exige HTTPS para o modo
-   offline, e esses serviços já dão isso.
-   - GitHub Pages também serve, mas aí configure `base: '/app-financas/'` no `vite.config.ts`.
-2. No celular, abra o link → menu do navegador → **"Adicionar à tela inicial"**.
-3. **Sincronizar (hoje):** Ajustes → *Exportar backup* num aparelho → mande o arquivo
-   (WhatsApp, Drive…) → *Importar* no outro. A importação mescla: vence a edição mais recente.
+Igual ao 7Hinos:
 
-## Ideias para evoluir (sugestão de ordem)
+1. Commits no padrão **`feat:`**, **`fix:`**, `chore:`… na `main`.
+2. O **release-please** abre um PR "chore(main): release x.y.z" com versão e CHANGELOG.
+3. **Merge do PR** → tag + release → o CI compila e anexa:
+   - `Tostao_x.y.z_android.apk` (assinado)
+   - `Tostao_x.y.z_windows-x64-setup.exe` (Inno Setup, instala sem pedir administrador)
+   - `Tostao_x.y.z_linux-x86_64.AppImage` e `.tar.gz`
+4. O job **Publicar** gera o `latest.json` **assinado (ed25519)** com o SHA-256 de cada instalador.
+5. Os apps instalados leem o `latest.json` ao abrir, conferem a assinatura, baixam em segundo
+   plano e mostram **Atualizar agora**:
+   - **Windows**: roda o instalador em silêncio e reabre o app.
+   - **Linux (AppImage)**: troca o arquivo e reabre.
+   - **Android**: abre o instalador do sistema (o Android sempre pede um toque).
+
+**Prévias:** um commit com `[instaladores]` numa branch (ou *Actions → Prévia → Run workflow*)
+gera uma pré-release para testar. Os apps instalados não se atualizam para prévias.
+
+### Configuração (uma vez só)
+
+**1. Chave das atualizações**
+```bash
+dart run tool/gen_keys.dart
+```
+Isso grava a chave pública em `lib/updates/update_key.dart` (faça commit) e mostra a chave privada:
+coloque-a no secret **`UPDATE_SIGNING_KEY`**.
+
+**2. Keystore do Android**
+```bash
+keytool -genkeypair -v -keystore tostao-release.jks -alias tostao \
+  -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 tostao-release.jks   # conteúdo do secret ANDROID_KEYSTORE_BASE64
+```
+
+| Secret (Settings → Secrets and variables → Actions) | Para quê |
+|---|---|
+| `UPDATE_SIGNING_KEY` | Assina o `latest.json` |
+| `ANDROID_KEYSTORE_BASE64` | Keystore do Android, em base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | Senha do keystore (e da chave) |
+
+> ⚠️ **Guarde a keystore e a chave privada fora do Git e com backup.** Se perder a keystore, o
+> Android não aceita mais instalar por cima e todo mundo precisa desinstalar (perdendo os dados
+> locais, se não tiver backup). Se perder a chave de atualização, os apps param de se atualizar sozinhos.
+
+**3. Repositório público.** O app baixa as releases sem token, então o repositório precisa ser
+público. Só o código fica visível; os dados financeiros nunca saem dos aparelhos.
+
+## Compartilhar com a esposa (hoje)
+Ajustes → **Exportar backup** num aparelho → mande o arquivo → **Importar** no outro.
+A importação junta tudo: vence a edição mais recente, e as exclusões também passam.
+
+## Ideias para evoluir
 
 **Fáceis**
-- [ ] Editar contas e categorias (hoje só cria/exclui)
-- [ ] Filtro por categoria/conta na lista de lançamentos
-- [ ] Orçamento mensal por categoria (a tabela `budgets` já existe!) com barra de progresso
-- [ ] Lembrete visual de contas vencendo (lançamentos não pagos com data próxima)
-- [ ] Campo "quem lançou" (você / esposa)
+- [ ] Editar contas e categorias (hoje só cria, arquiva e exclui)
+- [ ] Filtro por categoria ou conta nos lançamentos
+- [ ] Orçamento mensal por categoria (a tabela `budgets` já existe!)
+- [ ] Destaque para contas a vencer nos próximos dias
+- [ ] Campo "quem lançou" (você ou sua esposa)
 
 **Médias**
-- [ ] Lançamentos recorrentes (aluguel, assinaturas) e parcelados (`3/10`)
-- [ ] Cartão de crédito com fatura: data de fechamento/vencimento
-- [ ] Gráfico de evolução mês a mês (ex.: biblioteca `chart.js` ou SVG na mão)
-- [ ] Importar extrato **OFX/CSV** do banco
-- [ ] Metas/caixinhas ("Viagem", "Reserva de emergência")
-- [ ] Bloqueio com PIN
+- [ ] Lançamentos recorrentes (aluguel, assinaturas) e parcelados (3/10)
+- [ ] Cartão de crédito com fatura (fechamento e vencimento)
+- [ ] Gráfico de evolução mês a mês (`fl_chart`)
+- [ ] Importar extrato OFX/CSV do banco
+- [ ] Metas e caixinhas (viagem, reserva de emergência)
+- [ ] Bloqueio com PIN ou biometria (`local_auth`)
 
-**Sincronização automática (quando cansar do arquivo)** — sem abrir mão do offline:
-- **Pasta sincronizada:** salvar o backup numa pasta do Syncthing/Drive (File System Access API no PC).
-- **PouchDB + CouchDB** na sua casa (Raspberry Pi / PC sempre ligado): sync automático, offline-first.
-- **Dexie Cloud:** sync pronto para o Dexie (tem plano grátis pequeno, mas os dados passam pelo serviço).
-- **Seu próprio mini-servidor** (Node/Go + SQLite) com endpoint `/sync` usando o `updatedAt` que já existe.
+**Sincronização automática** (sem perder o offline)
+- Backup automático numa pasta sincronizada (Syncthing, Drive para desktop)
+- Mini-servidor em casa (Dart `shelf` + SQLite) com um `/sync` que usa o `updatedAt` que já existe
+- Google Drive (como no Sépia)
 
-**Outras plataformas no futuro:** embrulhar este mesmo código com **Capacitor** (app Android/iOS) ou
-**Tauri** (app de desktop) — sem reescrever nada.
+**Mais plataformas:** `flutter create --platforms=macos .` e mais um job no `build.yml`.

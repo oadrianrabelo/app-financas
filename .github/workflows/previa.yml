@@ -1,0 +1,42 @@
+# Instaladores de prévia para testar uma branch antes do release oficial.
+# Roda manualmente (Actions -> Prévia -> Run workflow) ou em push numa branch
+# cuja mensagem de commit contenha "[instaladores]".
+# A prévia é uma pré-release: os apps instalados NÃO se atualizam para ela.
+name: Prévia
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[instaladores]')
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.create.outputs.tag }}
+      version: ${{ steps.create.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)
+          tag="v${version}-previa.${{ github.run_number }}"
+          gh release create "$tag" --prerelease --target "$GITHUB_SHA" \
+            --title "Tostão ${version} (prévia ${{ github.run_number }})" \
+            --notes "Instaladores de teste gerados a partir da branch \`${GITHUB_REF_NAME}\`."
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: release
+    uses: ./.github/workflows/build.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit

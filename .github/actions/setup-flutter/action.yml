@@ -1,0 +1,13 @@
+name: Preparar Flutter
+description: Flutter na versão fixa do projeto, com cache, e dependências baixadas.
+runs:
+  using: composite
+  steps:
+    - uses: subosito/flutter-action@v2
+      with:
+        # Troque aqui para atualizar o Flutter do projeto inteiro (CI e releases).
+        flutter-version: 3.47.9
+        channel: stable
+        cache: true
+    - shell: bash
+      run: flutter pub get

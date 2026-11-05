@@ -1,0 +1,73 @@
+# Confere a release, publica o latest.json ASSINADO (atualização automática)
+# e completa as notas com instruções de instalação.
+name: Publicar
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Baixar instaladores da release
+        run: |
+          mkdir -p dist
+          gh release download "$TAG" --dir dist --pattern '*.apk' --pattern '*-setup.exe' --pattern '*.AppImage'
+          ls -la dist
+          for f in "Tostao_${VERSION}_android.apk" "Tostao_${VERSION}_windows-x64-setup.exe" "Tostao_${VERSION}_linux-x86_64.AppImage"; do
+            [ -f "dist/$f" ] || { echo "::error::Falta na release: $f"; exit 1; }
+          done
+
+      - name: latest.json assinado
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::warning::UPDATE_SIGNING_KEY não configurada: release sem atualização automática."; exit 0
+          fi
+          dart run tool/make_manifest.dart \
+            --version "$VERSION" \
+            --notes "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" \
+            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}" \
+            --out dist \
+            android="dist/Tostao_${VERSION}_android.apk" \
+            windows-x64="dist/Tostao_${VERSION}_windows-x64-setup.exe" \
+            linux-x64="dist/Tostao_${VERSION}_linux-x86_64.AppImage"
+          gh release upload "$TAG" dist/latest.json dist/latest.json.sig --clobber
+
+      - name: Como instalar (nas notas)
+        run: |
+          body=$(gh release view "$TAG" --json body -q .body)
+          marker="<!-- como-instalar -->"
+          case "$body" in *"$marker"*) exit 0 ;; esac
+          cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          $body
+
+          $marker
+          ### Como instalar
+          - **Android**: baixe o \`_android.apk\` e abra. Se pedir, permita instalar apps desta fonte.
+          - **Windows**: baixe o \`_windows-x64-setup.exe\`. Se aparecer “O Windows protegeu o computador”, clique em *Mais informações → Executar assim mesmo*.
+          - **Linux**: baixe o \`.AppImage\`, dê permissão de execução (\`chmod +x\`) e abra. Também tem o \`.tar.gz\`.
+
+          Quem já tem o Tostão instalado recebe esta versão sozinho: o app baixa em segundo plano e mostra **Atualizar agora**.
+          NOTES
+          sed -i 's/^          //' "$RUNNER_TEMP/notes.md"
+          gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"

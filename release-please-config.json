@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "dart",
+      "package-name": "tostao",
+      "include-component-in-tag": false,
+      "bump-minor-pre-major": true,
+      "changelog-sections": [
+        { "type": "feat", "section": "✨ Novas Funcionalidades" },
+        { "type": "fix", "section": "🐛 Correções" },
+        { "type": "perf", "section": "⚡ Desempenho" },
+        { "type": "refactor", "section": "♻️ Refatoração" },
+        { "type": "docs", "section": "📚 Documentação" },
+        { "type": "test", "section": "🧪 Testes" },
+        { "type": "ci", "section": "👷 CI/CD" },
+        { "type": "chore", "section": "🔧 Manutenção" }
+      ]
+    }
+  }
+}

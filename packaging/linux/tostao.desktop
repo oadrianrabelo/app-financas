@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Tostão
+Comment=Finanças da casa, offline
+Exec=tostao
+Icon=tostao
+Categories=Office;Finance;
+Terminal=false
