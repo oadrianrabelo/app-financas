@@ -13,6 +13,8 @@ import 'ui/theme/paper.dart';
 import 'ui/widgets/command_palette.dart';
 import 'ui/widgets/entry_form.dart';
 import 'ui/widgets/kbd.dart';
+import 'ui/widgets/sync_card.dart';
+import 'sync/sync_controller.dart';
 import 'ui/widgets/update_banner.dart';
 
 const appName = 'Livro-Caixa';
@@ -168,6 +170,28 @@ class _Sidebar extends StatelessWidget {
           for (var i = 0; i < _destinations.length; i++)
             _SidebarItem(dest: _destinations[i], selected: i == index, shortcut: '${i + 1}', onTap: () => onSelect(i)),
           const Spacer(),
+          ListenableBuilder(
+            listenable: AppScope.of(context).sync,
+            builder: (context, _) {
+              final sync = AppScope.of(context).sync;
+              if (!sync.enabled) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                child: Row(
+                  children: [
+                    const SyncDot(),
+                    const SizedBox(width: 8),
+                    Text(switch (sync.status) {
+                      SyncStatus.syncing => 'Sincronizando…',
+                      SyncStatus.error => 'Sem sincronizar',
+                      SyncStatus.needsPassphrase => 'Falta a senha da casa',
+                      _ => 'Sincronizado',
+                    }, style: TextStyle(fontSize: 12.5, color: p.pencil)),
+                  ],
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(

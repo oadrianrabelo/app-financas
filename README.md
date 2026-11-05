@@ -127,9 +127,44 @@ base64 -w0 livro-caixa-release.jks   # conteúdo do secret ANDROID_KEYSTORE_BASE
 **3. Repositório público.** O app baixa as releases sem token, então o repositório precisa ser
 público. Só o código fica visível; os dados financeiros nunca saem dos aparelhos.
 
-## Compartilhar com a esposa (hoje)
-Ajustes → **Exportar backup** num aparelho → mande o arquivo → **Importar** no outro.
-A importação junta tudo: vence a edição mais recente, e as exclusões também passam.
+## Sincronização (Google Drive)
+
+Os aparelhos entram com **a mesma conta Google da casa**. Cada um grava um retrato dos seus dados
+na pasta **oculta** do app no Drive (`appDataFolder`, permissão `drive.appdata`: o app só enxerga
+o que ele mesmo criou) e lê o dos outros; a edição mais recente vence e exclusões também passam.
+Tudo vai **cifrado (AES-256-GCM)** com a **senha da casa** (PBKDF2): o Google guarda, mas não lê.
+Sincroniza sozinho ao abrir, ao voltar para o app e alguns segundos depois de cada mudança.
+
+Código: `lib/sync/` (`crypto.dart`, `sync_engine.dart`, `drive_store.dart`, `google_auth.dart`).
+
+### Configurar o Google (uma vez só)
+1. https://console.cloud.google.com → crie o projeto **Livro-Caixa**.
+2. **APIs e serviços → Biblioteca** → ative **Google Drive API**.
+3. **Google Auth Platform** (tela de consentimento OAuth) → Começar: nome *Livro-Caixa*, seu e-mail,
+   público **Externo**. Em **Acesso a dados**, adicione o escopo `.../auth/drive.appdata`.
+   Em **Público**, clique em **Publicar app** (em teste, o login expira a cada 7 dias).
+4. **Clientes → Criar cliente**, três vezes:
+   - **Android**: pacote `io.github.oadrianrabelo.livrocaixa` e o **SHA-1** do keystore:
+     `keytool -list -v -keystore livro-caixa-release.jks -alias livrocaixa`
+   - **Aplicativo da Web** (sem endereços): copie o **ID do cliente**.
+   - **App para computador**: copie o **ID do cliente** e a **chave secreta**.
+5. Secrets do GitHub (Settings → Secrets and variables → Actions):
+
+| Secret | Valor |
+|---|---|
+| `GOOGLE_WEB_CLIENT_ID` | ID do cliente **Web** (usado pelo Android) |
+| `GOOGLE_DESKTOP_CLIENT_ID` | ID do cliente **App para computador** |
+| `GOOGLE_DESKTOP_CLIENT_SECRET` | Chave secreta do cliente **App para computador** |
+
+A próxima release já sai com a sincronização. Para rodar local:
+`flutter run --dart-define=GOOGLE_DESKTOP_CLIENT_ID=... --dart-define=GOOGLE_DESKTOP_CLIENT_SECRET=...`
+
+### Usar
+Ajustes → **Sincronização** → *Conectar ao Google Drive* (conta da casa) → o primeiro aparelho
+**cria a senha da casa**; os outros digitam a mesma. Sem a senha, os dados do Drive não podem ser
+lidos (os de cada aparelho continuam nele).
+
+Sem internet? O backup manual continua: Ajustes → **Exportar backup** → **Importar** no outro.
 
 ## Ideias para evoluir
 
@@ -142,9 +177,10 @@ A importação junta tudo: vence a edição mais recente, e as exclusões també
 - [x] Quem lançou (pessoas da casa; cada aparelho tem a sua pessoa padrão)
 - [x] Vale-alimentação: fora do Disponível, mostra quanto resta e quando renova
 - [x] APK só arm64 (bem menor)
+- [x] Visual refinado (Raycast/Arc), paleta de comandos e atalhos
+- [x] Sincronização pelo Google Drive, cifrada com a senha da casa
 
 **Próximos (combinados)**
-- [ ] Sincronizar os aparelhos do casal (os dois veem os mesmos gastos)
 - [ ] Cartões com fatura (compras somam na fatura do cartão)
 - [ ] "Guardado" (reservas, como as férias) e "A receber" (o adiantamento emprestado)
 
