@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../core/dates.dart';
 
+import '../sync/sync_controller.dart';
 import '../updates/updater.dart';
 import 'database.dart';
 import 'prefs.dart';
@@ -80,6 +81,7 @@ class AppScope extends InheritedWidget {
     required this.data,
     required this.prefs,
     required this.updater,
+    required this.sync,
     required super.child,
   });
 
@@ -87,6 +89,7 @@ class AppScope extends InheritedWidget {
   final AppData data;
   final Prefs prefs;
   final Updater updater;
+  final SyncController sync;
 
   static AppScope of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppScope>()!;
 

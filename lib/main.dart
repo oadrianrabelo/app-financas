@@ -5,6 +5,7 @@ import 'app.dart';
 import 'data/app_data.dart';
 import 'data/database.dart';
 import 'data/prefs.dart';
+import 'sync/sync_controller.dart';
 import 'updates/updater.dart';
 
 Future<void> main() async {
@@ -14,9 +15,10 @@ Future<void> main() async {
   final db = AppDatabase();
   final data = AppData(db);
   final prefs = Prefs(db);
+  final sync = SyncController(db, data);
   final updater = Updater();
   // Procura atualização ao abrir, sem atrapalhar (erros ficam só na tela de Ajustes).
   updater.check();
 
-  runApp(AppScope(db: db, data: data, prefs: prefs, updater: updater, child: const LivroCaixaApp()));
+  runApp(AppScope(db: db, data: data, prefs: prefs, updater: updater, sync: sync, child: const LivroCaixaApp()));
 }

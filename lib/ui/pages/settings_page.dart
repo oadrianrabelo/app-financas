@@ -14,6 +14,7 @@ import '../../updates/updater.dart';
 import '../theme/fonts.dart';
 import '../theme/paper.dart';
 import '../widgets/common.dart';
+import '../widgets/sync_card.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -23,6 +24,7 @@ class SettingsPage extends StatelessWidget {
     return const PageBody(
       title: 'Ajustes',
       children: [
+        SyncCard(),
         _TitheCard(),
         _RecurringCard(),
         _PeopleCard(),
