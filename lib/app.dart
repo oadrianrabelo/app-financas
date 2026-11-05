@@ -7,11 +7,11 @@ import 'ui/pages/home_page.dart';
 import 'ui/pages/settings_page.dart';
 import 'ui/widgets/update_banner.dart';
 
-const appName = 'Tostão';
-const _seed = Color(0xFF0F766E);
+const appName = 'Livro-Caixa';
+const _seed = Color(0xFF1F4D3A); // verde de livro contábil
 
-class TostaoApp extends StatelessWidget {
-  const TostaoApp({super.key});
+class LivroCaixaApp extends StatelessWidget {
+  const LivroCaixaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +96,7 @@ class _ShellState extends State<Shell> {
             leading: Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
               child: Text(
-                '🪙 $appName',
+                '📒 $appName',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),

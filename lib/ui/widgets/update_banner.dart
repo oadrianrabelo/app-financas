@@ -20,7 +20,7 @@ class UpdateBanner extends StatelessWidget {
         final version = updater.available?.version ?? '';
         final message = switch (s) {
           UpdateStatus.permissionRequired =>
-            'Permita que o Tostão instale atualizações na tela que abriu, volte aqui e toque de novo.',
+            'Permita que o Livro-Caixa instale atualizações na tela que abriu, volte aqui e toque de novo.',
           UpdateStatus.installing => 'Instalando a versão $version…',
           _ => 'A versão $version está pronta.',
         };

@@ -19,7 +19,7 @@ import 'package:path_provider/path_provider.dart';
 import 'manifest.dart';
 import 'update_key.dart';
 
-const releasesRepo = 'oadrianrabelo/app-financas';
+const releasesRepo = 'oadrianrabelo/livro-caixa';
 const _base = 'https://github.com/$releasesRepo/releases/latest/download';
 const releasesPage = 'https://github.com/$releasesRepo/releases/latest';
 
@@ -36,7 +36,7 @@ class Updater extends ChangeNotifier {
   Updater({http.Client? client}) : _http = client ?? http.Client();
 
   final http.Client _http;
-  static const _channel = MethodChannel('tostao/updates');
+  static const _channel = MethodChannel('livro_caixa/updates');
 
   UpdateStatus status = UpdateStatus.idle;
   UpdateManifest? available;

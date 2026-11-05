@@ -6,7 +6,7 @@ import 'package:drift/drift.dart';
 
 import '../data/database.dart';
 
-const backupFormat = 'tostao-backup';
+const backupFormat = 'livro-caixa-backup';
 const backupVersion = 1;
 
 class MergeResult {
@@ -34,7 +34,7 @@ Future<Map<String, dynamic>> exportData(AppDatabase db) async {
 
 Future<MergeResult> importData(AppDatabase db, Object? json) async {
   if (json is! Map || json['format'] != backupFormat || json['data'] is! Map) {
-    throw const FormatException('Arquivo não é um backup válido do Tostão.');
+    throw const FormatException('Arquivo não é um backup válido do Livro-Caixa.');
   }
   if ((json['version'] as int) > backupVersion) {
     throw const FormatException('Backup feito numa versão mais nova do app. Atualize o app primeiro.');

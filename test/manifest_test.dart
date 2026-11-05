@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tostao/updates/manifest.dart';
+import 'package:livro_caixa/updates/manifest.dart';
 
 void main() {
   test('assinatura: aceita o original e recusa alterado', () async {

@@ -75,13 +75,13 @@ int now() => DateTime.now().millisecondsSinceEpoch;
 
 @DriftDatabase(tables: [Accounts, Categories, Entries, Budgets])
 class AppDatabase extends _$AppDatabase {
-  /// O arquivo `tostao.sqlite` fica na pasta de dados do app
+  /// O arquivo `livro_caixa.sqlite` fica na pasta de dados do app
   /// (Windows: %APPDATA%, Linux: `~/.local/share/<id>`, Android: dados do app).
   AppDatabase([QueryExecutor? executor])
     : super(
         executor ??
             driftDatabase(
-              name: 'tostao',
+              name: 'livro_caixa',
               native: const DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
             ),
       );

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tostao/core/money.dart';
+import 'package:livro_caixa/core/money.dart';
 
 void main() {
   group('parseBRL', () {

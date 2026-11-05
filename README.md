@@ -1,4 +1,4 @@
-# 🪙 Tostão — finanças da casa
+# 📒 Livro-Caixa — finanças da casa
 
 App de finanças pessoal, **offline** e **privado**: os dados ficam num SQLite no próprio aparelho.
 Feito em **Flutter**, um código só para **Android, Windows e Linux**, com **release e
@@ -44,9 +44,9 @@ Igual ao 7Hinos:
 1. Commits no padrão **`feat:`**, **`fix:`**, `chore:`… na `main`.
 2. O **release-please** abre um PR "chore(main): release x.y.z" com versão e CHANGELOG.
 3. **Merge do PR** → tag + release → o CI compila e anexa:
-   - `Tostao_x.y.z_android.apk` (assinado)
-   - `Tostao_x.y.z_windows-x64-setup.exe` (Inno Setup, instala sem pedir administrador)
-   - `Tostao_x.y.z_linux-x86_64.AppImage` e `.tar.gz`
+   - `LivroCaixa_x.y.z_android.apk` (assinado)
+   - `LivroCaixa_x.y.z_windows-x64-setup.exe` (Inno Setup, instala sem pedir administrador)
+   - `LivroCaixa_x.y.z_linux-x86_64.AppImage` e `.tar.gz`
 4. O job **Publicar** gera o `latest.json` **assinado (ed25519)** com o SHA-256 de cada instalador.
 5. Os apps instalados leem o `latest.json` ao abrir, conferem a assinatura, baixam em segundo
    plano e mostram **Atualizar agora**:
@@ -66,11 +66,18 @@ dart run tool/gen_keys.dart
 Isso grava a chave pública em `lib/updates/update_key.dart` (faça commit) e mostra a chave privada:
 coloque-a no secret **`UPDATE_SIGNING_KEY`**.
 
+Sem Dart instalado, dá para gerar com `openssl` (Linux, macOS ou Git Bash no Windows):
+```bash
+openssl genpkey -algorithm ed25519 -out livro-caixa-update.pem
+openssl pkey -in livro-caixa-update.pem -outform DER | tail -c 32 | base64          # privada -> secret
+openssl pkey -in livro-caixa-update.pem -pubout -outform DER | tail -c 32 | base64  # pública -> update_key.dart
+```
+
 **2. Keystore do Android**
 ```bash
-keytool -genkeypair -v -keystore tostao-release.jks -alias tostao \
+keytool -genkeypair -v -keystore livro-caixa-release.jks -alias livrocaixa \
   -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 tostao-release.jks   # conteúdo do secret ANDROID_KEYSTORE_BASE64
+base64 -w0 livro-caixa-release.jks   # conteúdo do secret ANDROID_KEYSTORE_BASE64
 ```
 
 | Secret (Settings → Secrets and variables → Actions) | Para quê |

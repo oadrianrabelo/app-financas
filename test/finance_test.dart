@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tostao/data/database.dart';
-import 'package:tostao/domain/finance.dart';
+import 'package:livro_caixa/data/database.dart';
+import 'package:livro_caixa/domain/finance.dart';
 
 Account acc(String id, [int initial = 0]) => Account(
   id: id,
