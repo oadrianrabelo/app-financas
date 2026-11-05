@@ -113,7 +113,10 @@ void main() {
         final e = (await newDb.select(newDb.entries).get()).single;
         expect(e.titheStatus, 'separado');
         expect(e.recurringId, isNull);
-        expect((await newDb.select(newDb.people).get()).map((p) => p.name), ['Adrian', 'Andressa']);
+        expect((await newDb.select(newDb.people).get()).map((p) => p.name), [
+          'Adrian',
+          'Andressa',
+        ]);
       },
     );
   });
