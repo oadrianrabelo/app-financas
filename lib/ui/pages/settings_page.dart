@@ -5,15 +5,18 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../backup/backup.dart';
-import '../../core/money.dart';
 import '../../core/dates.dart';
+import '../../core/money.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
 import '../../domain/tithe.dart';
 import '../../updates/updater.dart';
+import '../kit/kit.dart';
 import '../theme/fonts.dart';
 import '../theme/paper.dart';
+import '../theme/themes.dart';
 import '../widgets/common.dart';
+import '../widgets/editors.dart';
 import '../widgets/sync_card.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -21,56 +24,291 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PageBody(
-      title: 'Ajustes',
+    final scope = AppScope.of(context);
+    return ListenableBuilder(
+      listenable: Listenable.merge([scope.prefs, scope.data]),
+      builder: (context, _) => const PageBody(
+        title: 'Ajustes',
+        children: [SyncCard(), _Appearance(), _Tithe(), _Recurrings(), _Categories(), _People(), _Backup(), _About()],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Aparência
+// ---------------------------------------------------------------------------
+
+class _Appearance extends StatelessWidget {
+  const _Appearance();
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = AppScope.of(context).prefs;
+    final p = Paper.of(context);
+    final lights = paperSpecs.where((s) => !s.dark).toList();
+    final darks = paperSpecs.where((s) => s.dark).toList();
+    Widget sub(String t) => Padding(
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+      child: Text(
+        t,
+        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.pencil),
+      ),
+    );
+    Widget pad(Widget w) => Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 14), child: w);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SyncCard(),
-        _TitheCard(),
-        _RecurringCard(),
-        _PeopleCard(),
-        _LookCard(),
-        _BackupCard(),
-        _UpdatesCard(),
-        _CategoriesCard(),
+        LcGroup(
+          title: 'TEMA',
+          trailing: LcSegmented<ThemeMode>(
+            options: const [(ThemeMode.system, 'Auto'), (ThemeMode.light, 'Claro'), (ThemeMode.dark, 'Escuro')],
+            value: prefs.themeMode,
+            onChanged: prefs.setThemeMode,
+          ),
+          description: 'No "Auto", o app segue o sistema: usa o papel claro de dia e o escuro à noite.',
+          children: [
+            pad(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  sub('Papel claro'),
+                  _ThemeGallery(specs: lights, selected: prefs.lightTheme, onTap: prefs.setLightTheme),
+                  const SizedBox(height: 14),
+                  sub('Papel escuro'),
+                  _ThemeGallery(specs: darks, selected: prefs.darkTheme, onTap: prefs.setDarkTheme),
+                ],
+              ),
+            ),
+            pad(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  sub('Cor da caneta'),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final o in inkOptions)
+                        _InkDot(option: o, selected: prefs.ink == o.id, onTap: () => prefs.setInk(o.id)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        LcGroup(
+          title: 'FOLHA',
+          children: [
+            pad(
+              LcSegmented<Ruling>(
+                expand: true,
+                options: [for (final r in Ruling.values) (r, rulingNames[r]!)],
+                value: prefs.ruling,
+                onChanged: prefs.setRuling,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Column(
+                children: [
+                  LcToggleRow(title: 'Margem vermelha', value: prefs.showMargin, onChanged: prefs.setShowMargin),
+                  LcToggleRow(
+                    title: 'Textura de papel',
+                    subtitle: 'Um granulado bem leve, como papel de verdade.',
+                    value: prefs.grain,
+                    onChanged: prefs.setGrain,
+                  ),
+                  LcToggleRow(
+                    title: 'Argolas de fichário',
+                    subtitle: 'No computador, entre as duas páginas do livro aberto.',
+                    value: prefs.bookRings,
+                    onChanged: prefs.setBookRings,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        LcGroup(
+          title: 'TIPOGRAFIA',
+          children: [
+            pad(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  sub('Interface'),
+                  _FontPicker(
+                    fonts: uiFonts,
+                    selected: prefs.uiFont,
+                    onTap: prefs.setUiFont,
+                    sample: (f) => Text(
+                      'Lançar',
+                      style: TextStyle(fontFamily: f, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  sub('Letra de mão'),
+                  _FontPicker(
+                    fonts: handFonts,
+                    selected: prefs.handFont,
+                    onTap: prefs.setHandFont,
+                    sample: (f) => Text('Setembro', style: p.copyWith(handFont: f).hand(22)),
+                  ),
+                  const SizedBox(height: 14),
+                  sub('Números'),
+                  _FontPicker(
+                    fonts: monoFonts,
+                    selected: prefs.monoFont,
+                    onTap: prefs.setMonoFont,
+                    sample: (f) => Text(r'R$ 1.234,56', style: p.copyWith(monoFont: f).mono(14)),
+                  ),
+                  const SizedBox(height: 14),
+                  sub('Tamanho do texto'),
+                  LcSegmented<double>(
+                    expand: true,
+                    options: textScales,
+                    value: prefs.textScale,
+                    onChanged: prefs.setTextScale,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 }
 
-void _toast(BuildContext context, String msg) =>
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-class _TitheCard extends StatelessWidget {
-  const _TitheCard();
+/// Miniaturas dos papéis: um pedacinho de folha com pauta, margem e tinta.
+class _ThemeGallery extends StatelessWidget {
+  const _ThemeGallery({required this.specs, required this.selected, required this.onTap});
+  final List<PaperSpec> specs;
+  final String selected;
+  final ValueChanged<String> onTap;
 
   @override
   Widget build(BuildContext context) {
-    final prefs = AppScope.of(context).prefs;
-    Widget field(String label, int bp, Future<void> Function(int) save) =>
-        _PercentField(label: label, bp: bp, onSave: save);
-    return ListenableBuilder(
-      listenable: prefs,
-      builder: (context, _) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Dízimo e oferta', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              const Text(
-                'Valores sugeridos no botão "Separar dízimo e oferta". Ao separar, dá para ajustar na hora; '
-                'o percentual da oferta usado fica lembrado para a próxima vez.',
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 16,
+    final p = Paper.of(context);
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final s in specs)
+          GestureDetector(
+            onTap: () => onTap(s.id),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Column(
                 children: [
-                  field('Dízimo', prefs.titheBp, prefs.setTitheBp),
-                  field('Oferta', prefs.offeringBp, prefs.setOfferingBp),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 104,
+                    height: 70,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected == s.id ? p.accent : hairline(p),
+                        width: selected == s.id ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(7),
+                      child: CustomPaint(
+                        painter: _SwatchPainter(s),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 8, 8, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Novembro',
+                                style: TextStyle(fontFamily: p.handFont, fontSize: 15, color: s.redInk, height: 1),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                r'R$ 405,30',
+                                style: TextStyle(fontFamily: p.monoFont, fontSize: 9.5, color: s.ink),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    s.name,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: selected == s.id ? FontWeight.w600 : FontWeight.w500,
+                      color: selected == s.id ? p.ink : p.pencil,
+                    ),
+                  ),
                 ],
               ),
-            ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SwatchPainter extends CustomPainter {
+  _SwatchPainter(this.s);
+  final PaperSpec s;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = s.paper);
+    final rule = Paint()..color = s.rule;
+    for (var y = 22.0; y < size.height; y += 12) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
+    }
+    canvas.drawLine(const Offset(15, 0), Offset(15, size.height), Paint()..color = s.margin);
+  }
+
+  @override
+  bool shouldRepaint(_SwatchPainter old) => old.s != s;
+}
+
+class _InkDot extends StatelessWidget {
+  const _InkDot({required this.option, required this.selected, required this.onTap});
+  final InkOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    final color = (p.dark ? option.dark : option.light);
+    return Tooltip(
+      message: option.name,
+      child: GestureDetector(
+        onTap: onTap,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 30,
+            height: 30,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: selected ? p.accent : Colors.transparent, width: 2),
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                gradient: color == null ? SweepGradient(colors: [p.ink, p.redInk, p.greenInk, p.ink]) : null,
+                border: Border.all(color: hairline(p)),
+              ),
+            ),
           ),
         ),
       ),
@@ -78,10 +316,80 @@ class _TitheCard extends StatelessWidget {
   }
 }
 
+class _FontPicker extends StatelessWidget {
+  const _FontPicker({required this.fonts, required this.selected, required this.onTap, required this.sample});
+  final List<String> fonts;
+  final String selected;
+  final ValueChanged<String> onTap;
+  final Widget Function(String font) sample;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final f in fonts)
+          Tooltip(
+            message: f,
+            child: GestureDetector(
+              onTap: () => onTap(f),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected == f ? p.ink.withValues(alpha: 0.06) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: selected == f ? p.accent : hairline(p), width: selected == f ? 1.6 : 1),
+                  ),
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(color: p.ink),
+                    child: sample(f),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dízimo e oferta
+// ---------------------------------------------------------------------------
+
+class _Tithe extends StatelessWidget {
+  const _Tithe();
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = AppScope.of(context).prefs;
+    return LcGroup(
+      title: 'DÍZIMO E OFERTA',
+      description:
+          'Sugeridos no botão "Separar dízimo e oferta". Ao separar dá para ajustar na hora; '
+          'o percentual da oferta digitado lá fica lembrado.',
+      children: [
+        LcRow(
+          title: 'Dízimo',
+          trailing: _PercentField(bp: prefs.titheBp, onSave: prefs.setTitheBp),
+        ),
+        LcRow(
+          title: 'Oferta',
+          trailing: _PercentField(bp: prefs.offeringBp, onSave: prefs.setOfferingBp),
+        ),
+      ],
+    );
+  }
+}
+
 /// Campo de percentual que salva ao sair do campo (ou Enter), sem perder o foco.
 class _PercentField extends StatefulWidget {
-  const _PercentField({required this.label, required this.bp, required this.onSave});
-  final String label;
+  const _PercentField({required this.bp, required this.onSave});
   final int bp;
   final Future<void> Function(int) onSave;
 
@@ -127,88 +435,114 @@ class _PercentFieldState extends State<_PercentField> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 150,
+    width: 96,
     child: TextField(
       controller: _controller,
       focusNode: _focus,
+      textAlign: TextAlign.end,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: widget.label, suffixText: '%'),
+      style: Paper.of(context).mono(14),
+      decoration: lcInputDecoration(context, suffix: '%'),
       onSubmitted: (_) => _save(),
       onTapOutside: (_) => _focus.unfocus(),
     ),
   );
 }
 
-class _RecurringCard extends StatelessWidget {
-  const _RecurringCard();
+// ---------------------------------------------------------------------------
+// Contas fixas, categorias, pessoas
+// ---------------------------------------------------------------------------
+
+class _Recurrings extends StatelessWidget {
+  const _Recurrings();
 
   @override
   Widget build(BuildContext context) {
-    final scope = AppScope.of(context);
-    return ListenableBuilder(
-      listenable: scope.data,
-      builder: (context, _) {
-        final list = scope.data.recurrings;
-        return Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                title: Text('Contas fixas', style: Theme.of(context).textTheme.titleMedium),
-                subtitle: const Text(
-                  'Aparecem sozinhas todo mês para marcar ✓. Para criar, marque "Conta fixa" ao lançar.',
-                ),
-              ),
-              if (list.isEmpty) const ListTile(title: Text('Nenhuma ainda.')),
-              for (final r in list)
-                ListTile(
-                  enabled: r.active,
-                  title: Text(r.description),
-                  subtitle: Text(
-                    [
-                      r.type == EntryType.receita ? 'Entrada' : 'Gasto',
-                      'dia ${r.day}',
-                      r.variable ? 'valor muda (repete o do mês anterior)' : formatBRL(r.amount),
-                      if (!r.active) 'parada',
-                    ].join(' · '),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: r.variable ? 'Valor fixo' : 'O valor muda todo mês',
-                        icon: Icon(r.variable ? Icons.trending_flat : Icons.show_chart),
-                        onPressed: r.active ? () => scope.db.updateRecurring(r.id, variable: !r.variable) : null,
-                      ),
-                      IconButton(
-                        tooltip: r.active ? 'Parar de repetir' : 'Voltar a repetir',
-                        icon: Icon(r.active ? Icons.pause_circle_outline : Icons.play_circle_outline),
-                        onPressed: () => scope.db.updateRecurring(r.id, active: !r.active),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+    final data = AppScope.of(context).data;
+    return LcGroup(
+      title: 'CONTAS FIXAS',
+      description: 'Aparecem sozinhas todo mês para marcar ✓. Para criar, marque "Conta fixa" ao lançar.',
+      children: [
+        if (data.recurrings.isEmpty) const LcRow(title: 'Nenhuma ainda'),
+        for (final r in data.recurrings)
+          LcRow(
+            dim: !r.active,
+            leading: Icon(
+              r.type == EntryType.receita ? LucideIcons.arrowDownLeft : LucideIcons.repeat,
+              size: 17,
+              color: Paper.of(context).pencil,
+            ),
+            title: r.description,
+            subtitle: [
+              'dia ${r.day}',
+              r.variable ? 'valor muda' : formatBRL(r.amount),
+              if (!r.active) 'parada',
+            ].join(' · '),
+            onTap: () => showRecurringEditor(context, r),
           ),
-        );
-      },
+      ],
     );
   }
 }
 
-class _PeopleCard extends StatelessWidget {
-  const _PeopleCard();
+class _Categories extends StatelessWidget {
+  const _Categories();
+
+  @override
+  Widget build(BuildContext context) {
+    final data = AppScope.of(context).data;
+    final p = Paper.of(context);
+    Widget row(Category c) => LcRow(
+      leading: Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Color(c.color).withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(c.icon, style: const TextStyle(fontSize: 15)),
+      ),
+      title: c.name,
+      subtitle: c.kind == CategoryKind.receita ? 'Entrada' : sectionLabels[c.section] ?? 'Outros',
+      onTap: () => showCategoryEditor(context, editing: c),
+    );
+    final expenses = data.categories.where((c) => c.kind == CategoryKind.despesa).toList();
+    final incomes = data.categories.where((c) => c.kind == CategoryKind.receita).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LcGroup(
+          title: 'CATEGORIAS DE GASTO',
+          trailing: LcButton(
+            'Nova',
+            small: true,
+            kind: LcButtonKind.secondary,
+            icon: LucideIcons.plus,
+            onPressed: () => showCategoryEditor(context),
+          ),
+          children: [for (final c in expenses) row(c)],
+        ),
+        LcGroup(title: 'CATEGORIAS DE ENTRADA', children: [for (final c in incomes) row(c)]),
+        if (p.dark) const SizedBox.shrink(),
+      ],
+    );
+  }
+}
+
+class _People extends StatelessWidget {
+  const _People();
 
   Future<void> _rename(BuildContext context, Person person) async {
     final controller = TextEditingController(text: person.name);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Nome'),
-        content: TextField(controller: controller, autofocus: true),
+    final name = await showLcDialog<String>(
+      context,
+      builder: (c) => LcDialogBody(
+        title: 'Nome',
+        content: LcField(controller: controller, autofocus: true, onSubmitted: (v) => Navigator.pop(c, v.trim())),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: const Text('Salvar')),
+          LcButton('Cancelar', kind: LcButtonKind.ghost, onPressed: () => Navigator.pop(c)),
+          LcButton('Salvar', onPressed: () => Navigator.pop(c, controller.text.trim())),
         ],
       ),
     );
@@ -218,105 +552,53 @@ class _PeopleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = AppScope.of(context);
-    return ListenableBuilder(
-      listenable: Listenable.merge([scope.data, scope.prefs]),
-      builder: (context, _) => Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ListTile(
-              title: Text('Pessoas da casa', style: Theme.of(context).textTheme.titleMedium),
-              subtitle: const Text('Escolha de quem é este aparelho: é quem vem marcado ao lançar.'),
-            ),
-            for (final p in scope.data.people)
-              RadioListTile<String>(
-                value: p.id,
-                // ignore: deprecated_member_use
-                groupValue: scope.prefs.mePerson,
-                // ignore: deprecated_member_use
-                onChanged: (v) => scope.prefs.setMePerson(v!),
-                title: Text(p.name),
-                subtitle: scope.prefs.mePerson == p.id ? const Text('Este aparelho') : null,
-                secondary: IconButton(
-                  tooltip: 'Trocar o nome',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _rename(context, p),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LookCard extends StatelessWidget {
-  const _LookCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final prefs = AppScope.of(context).prefs;
     final p = Paper.of(context);
-    return ListenableBuilder(
-      listenable: prefs,
-      builder: (context, _) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Aparência', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              SegmentedButton<ThemeMode>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: ThemeMode.system, label: Text('Automático')),
-                  ButtonSegment(value: ThemeMode.light, label: Text('Papel')),
-                  ButtonSegment(value: ThemeMode.dark, label: Text('Noite')),
-                ],
-                selected: {prefs.themeMode},
-                onSelectionChanged: (v) => prefs.setThemeMode(v.first),
+    return LcGroup(
+      title: 'PESSOAS DA CASA',
+      description: 'A pessoa deste aparelho vem marcada ao lançar.',
+      children: [
+        for (final person in scope.data.people)
+          LcRow(
+            leading: CircleAvatar(
+              radius: 14,
+              backgroundColor: p.ink.withValues(alpha: 0.08),
+              child: Text(
+                person.name.characters.first,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: p.ink),
               ),
-              const SizedBox(height: 16),
-              const Text('Letra de mão'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final f in handFonts)
-                    ChoiceChip(
-                      label: Text('Setembro', style: p.copyWith(handFont: f).hand(22)),
-                      tooltip: f,
-                      selected: prefs.handFont == f,
-                      onSelected: (_) => prefs.setHandFont(f),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text('Números'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final f in monoFonts)
-                    ChoiceChip(
-                      label: Text(r'R$ 1.234,56', style: p.copyWith(monoFont: f).mono(15)),
-                      tooltip: f,
-                      selected: prefs.monoFont == f,
-                      onSelected: (_) => prefs.setMonoFont(f),
-                    ),
-                ],
-              ),
-            ],
+            ),
+            title: person.name,
+            subtitle: scope.prefs.mePerson == person.id ? 'Este aparelho' : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (scope.prefs.mePerson != person.id)
+                  LcButton(
+                    'É este aparelho',
+                    small: true,
+                    kind: LcButtonKind.ghost,
+                    onPressed: () => scope.prefs.setMePerson(person.id),
+                  ),
+                LcIconButton(
+                  LucideIcons.pencil,
+                  tooltip: 'Trocar o nome',
+                  size: 15,
+                  onPressed: () => _rename(context, person),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+      ],
     );
   }
 }
 
-class _BackupCard extends StatelessWidget {
-  const _BackupCard();
+// ---------------------------------------------------------------------------
+// Backup e versão
+// ---------------------------------------------------------------------------
+
+class _Backup extends StatelessWidget {
+  const _Backup();
 
   Future<void> _export(BuildContext context) async {
     final db = AppScope.of(context).db;
@@ -326,7 +608,7 @@ class _BackupCard extends StatelessWidget {
       bytes: Uint8List.fromList(utf8.encode(json)),
       mimeType: 'application/json',
     );
-    if (saved != null && context.mounted) _toast(context, 'Backup salvo.');
+    if (saved != null && context.mounted) lcToast(context, 'Backup salvo.');
   }
 
   Future<void> _import(BuildContext context) async {
@@ -335,51 +617,33 @@ class _BackupCard extends StatelessWidget {
     if (file == null) return;
     try {
       final result = await importData(db, jsonDecode(utf8.decode(await file.readAsBytes())));
-      if (context.mounted) _toast(context, 'Importado: $result.');
+      if (context.mounted) lcToast(context, 'Importado: $result.');
     } on FormatException catch (e) {
-      if (context.mounted) _toast(context, e.message);
+      if (context.mounted) lcToast(context, e.message, icon: LucideIcons.circleAlert);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Backup e sincronização', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text(
-              'Seus dados ficam só neste aparelho. Exporte um backup com frequência. Para levar os dados a outro '
-              'aparelho, exporte aqui e importe lá: a importação junta tudo e mantém a versão mais recente de cada item.',
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _import(context),
-                  icon: const Icon(Icons.file_open_outlined),
-                  label: const Text('Importar…'),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _export(context),
-                  icon: const Icon(Icons.save_alt),
-                  label: const Text('Exportar backup'),
-                ),
-              ],
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => LcGroup(
+    title: 'BACKUP',
+    description: 'Um arquivo com tudo. Importar junta com o que já existe: vale a edição mais recente.',
+    children: [
+      LcRow(
+        leading: const Icon(LucideIcons.download, size: 17),
+        title: 'Exportar backup',
+        onTap: () => _export(context),
       ),
-    );
-  }
+      LcRow(
+        leading: const Icon(LucideIcons.upload, size: 17),
+        title: 'Importar backup…',
+        onTap: () => _import(context),
+      ),
+    ],
+  );
 }
 
-class _UpdatesCard extends StatelessWidget {
-  const _UpdatesCard();
+class _About extends StatelessWidget {
+  const _About();
 
   @override
   Widget build(BuildContext context) {
@@ -388,162 +652,30 @@ class _UpdatesCard extends StatelessWidget {
       listenable: updater,
       builder: (context, _) {
         final status = switch (updater.status) {
-          UpdateStatus.idle || UpdateStatus.checking => 'Procurando…',
-          UpdateStatus.upToDate => 'Você está na versão mais recente.',
+          UpdateStatus.idle || UpdateStatus.checking => 'Procurando atualização…',
+          UpdateStatus.upToDate => 'Versão mais recente.',
           UpdateStatus.downloading =>
-            'Baixando a versão ${updater.available?.version}'
+            'Baixando a ${updater.available?.version}'
                 '${updater.progress != null ? ' (${(updater.progress! * 100).round()}%)' : ''}…',
-          UpdateStatus.ready ||
-          UpdateStatus.permissionRequired => 'Versão ${updater.available?.version} pronta para instalar.',
+          UpdateStatus.ready || UpdateStatus.permissionRequired => 'A ${updater.available?.version} está pronta.',
           UpdateStatus.installing => 'Instalando…',
-          UpdateStatus.unsupported => updater.error ?? 'Atualização automática desligada nesta versão (build local).',
+          UpdateStatus.unsupported => updater.error ?? 'Atualização automática desligada (build local).',
           UpdateStatus.error => 'Não deu para verificar: ${updater.error}',
         };
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.system_update_outlined),
-            title: Text('Versão ${updater.currentVersion}'),
-            subtitle: Text(status),
-            trailing: updater.status == UpdateStatus.ready
-                ? FilledButton(onPressed: updater.install, child: const Text('Atualizar'))
-                : IconButton(tooltip: 'Procurar agora', icon: const Icon(Icons.refresh), onPressed: updater.check),
-          ),
+        return LcGroup(
+          title: 'SOBRE',
+          children: [
+            LcRow(
+              leading: const Text('📒', style: TextStyle(fontSize: 18)),
+              title: 'Livro-Caixa ${updater.currentVersion}',
+              subtitle: status,
+              trailing: updater.status == UpdateStatus.ready
+                  ? LcButton('Atualizar', small: true, onPressed: updater.install)
+                  : LcIconButton(LucideIcons.refreshCw, tooltip: 'Procurar agora', size: 16, onPressed: updater.check),
+            ),
+          ],
         );
       },
     );
   }
 }
-
-class _CategoriesCard extends StatelessWidget {
-  const _CategoriesCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = AppScope.of(context);
-    return ListenableBuilder(
-      listenable: scope.data,
-      builder: (context, _) => Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ListTile(
-              title: Text('Categorias', style: Theme.of(context).textTheme.titleMedium),
-              trailing: TextButton.icon(
-                onPressed: () => showDialog(context: context, builder: (_) => const _NewCategoryDialog()),
-                icon: const Icon(Icons.add),
-                label: const Text('Nova'),
-              ),
-            ),
-            for (final c in scope.data.categories)
-              ListTile(
-                leading: Text(c.icon, style: const TextStyle(fontSize: 22)),
-                title: Text(c.name),
-                subtitle: Text(
-                  c.kind == CategoryKind.receita ? 'Entrada' : 'Gasto · ${_sectionLabels[c.section] ?? 'Outros'}',
-                ),
-                trailing: IconButton(
-                  tooltip: 'Excluir',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () async {
-                    if (await confirm(context, 'Excluir "${c.name}"?')) {
-                      await scope.db.softDelete(scope.db.categories, c.id);
-                    }
-                  },
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NewCategoryDialog extends StatefulWidget {
-  const _NewCategoryDialog();
-
-  @override
-  State<_NewCategoryDialog> createState() => _NewCategoryDialogState();
-}
-
-class _NewCategoryDialogState extends State<_NewCategoryDialog> {
-  final _name = TextEditingController();
-  final _icon = TextEditingController(text: '🏷️');
-  CategoryKind _kind = CategoryKind.despesa;
-  CategorySection _section = CategorySection.casa;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Nova categoria'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _icon,
-            decoration: const InputDecoration(labelText: 'Ícone (emoji)'),
-          ),
-          TextField(
-            controller: _name,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Nome', hintText: 'Ex.: Pets'),
-          ),
-          DropdownButtonFormField(
-            initialValue: _kind,
-            decoration: const InputDecoration(labelText: 'Tipo'),
-            items: const [
-              DropdownMenuItem(value: CategoryKind.despesa, child: Text('Gasto')),
-              DropdownMenuItem(value: CategoryKind.receita, child: Text('Entrada')),
-            ],
-            onChanged: (v) => setState(() => _kind = v!),
-          ),
-          if (_kind == CategoryKind.despesa)
-            DropdownButtonFormField(
-              initialValue: _section,
-              decoration: const InputDecoration(labelText: 'Seção no caderno'),
-              items: [
-                for (final s in [
-                  CategorySection.cartao,
-                  CategorySection.casa,
-                  CategorySection.pessoal,
-                  CategorySection.outros,
-                ])
-                  DropdownMenuItem(value: s, child: Text(_sectionLabels[s]!)),
-              ],
-              onChanged: (v) => setState(() => _section = v!),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(
-          onPressed: () async {
-            if (_name.text.trim().isEmpty) return;
-            final color = HSLColor.fromAHSL(
-              1,
-              (DateTime.now().millisecond * 0.36) % 360,
-              0.65,
-              0.45,
-            ).toColor().toARGB32();
-            await AppScope.of(context).db.addCategory(
-              name: _name.text.trim(),
-              kind: _kind,
-              icon: _icon.text.trim(),
-              color: color,
-              section: _kind == CategoryKind.despesa ? _section : null,
-            );
-            if (context.mounted) Navigator.pop(context);
-          },
-          child: const Text('Adicionar'),
-        ),
-      ],
-    );
-  }
-}
-
-const _sectionLabels = {
-  CategorySection.primicias: 'Dízimo e oferta',
-  CategorySection.cartao: 'Cartão',
-  CategorySection.casa: 'Casa',
-  CategorySection.pessoal: 'Pessoal',
-  CategorySection.outros: 'Outros',
-};

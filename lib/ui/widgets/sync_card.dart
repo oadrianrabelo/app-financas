@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/app_data.dart';
 import '../../sync/sync_controller.dart';
+import '../kit/kit.dart';
 import '../theme/paper.dart';
 
 /// Ajustes → Sincronização (Google Drive).
@@ -13,24 +14,18 @@ class SyncCard extends StatelessWidget {
     final sync = AppScope.of(context).sync;
     return ListenableBuilder(
       listenable: sync,
-      builder: (context, _) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('Sincronização', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(width: 8),
-                  const SyncDot(),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ..._body(context, sync),
-            ],
+      builder: (context, _) => LcGroup(
+        title: 'SINCRONIZAÇÃO',
+        trailing: const SyncDot(),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: DefaultTextStyle.merge(
+              style: TextStyle(fontSize: 13.5, color: Paper.of(context).ink, height: 1.45),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _body(context, sync)),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -54,11 +49,7 @@ class SyncCard extends StatelessWidget {
           ),
           if (sync.error != null) _error(context, sync.error!),
           const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: sync.signIn,
-            icon: const Icon(Icons.cloud_outlined, size: 18),
-            label: const Text('Conectar ao Google Drive'),
-          ),
+          LcButton('Conectar ao Google Drive', icon: LucideIcons.cloud, onPressed: sync.signIn),
         ];
       case SyncStatus.needsPassphrase:
         return const [_PassphraseForm()];
@@ -78,27 +69,25 @@ class SyncCard extends StatelessWidget {
           Wrap(
             spacing: 8,
             children: [
-              FilledButton.icon(
+              LcButton(
+                'Sincronizar agora',
+                icon: LucideIcons.refreshCw,
+                kind: LcButtonKind.secondary,
                 onPressed: sync.status == SyncStatus.syncing ? null : sync.syncNow,
-                icon: const Icon(Icons.sync, size: 18),
-                label: const Text('Sincronizar agora'),
               ),
-              TextButton(
+              LcButton(
+                'Desconectar',
+                kind: LcButtonKind.ghost,
                 onPressed: () async {
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: const Text('Desconectar?'),
-                      content: const Text('Este aparelho para de sincronizar. Os dados continuam aqui e no Drive.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
-                        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Desconectar')),
-                      ],
-                    ),
-                  );
-                  if (ok == true) await sync.signOut();
+                  if (await lcConfirm(
+                    context,
+                    'Este aparelho para de sincronizar. Os dados continuam aqui e no Drive.',
+                    confirm: 'Desconectar',
+                    title: 'Desconectar?',
+                  )) {
+                    await sync.signOut();
+                  }
                 },
-                child: const Text('Desconectar'),
               ),
             ],
           ),
@@ -162,7 +151,7 @@ class _PassphraseFormState extends State<_PassphraseForm> {
   Widget build(BuildContext context) {
     final p = Paper.of(context);
     if (_exists == null && _error == null) {
-      return const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator());
+      return const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator(minHeight: 2));
     }
     final creating = _exists == false;
     return Column(
@@ -177,10 +166,10 @@ class _PassphraseFormState extends State<_PassphraseForm> {
         const SizedBox(height: 12),
         SizedBox(
           width: 360,
-          child: TextField(
+          child: LcField(
+            label: 'Senha da casa',
             controller: _pass,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Senha da casa'),
+            obscure: true,
             onSubmitted: (_) => creating ? null : _submit(),
           ),
         ),
@@ -188,12 +177,7 @@ class _PassphraseFormState extends State<_PassphraseForm> {
           const SizedBox(height: 8),
           SizedBox(
             width: 360,
-            child: TextField(
-              controller: _confirm,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Repita a senha'),
-              onSubmitted: (_) => _submit(),
-            ),
+            child: LcField(label: 'Repita a senha', controller: _confirm, obscure: true, onSubmitted: (_) => _submit()),
           ),
         ],
         if (_error != null)
@@ -202,9 +186,10 @@ class _PassphraseFormState extends State<_PassphraseForm> {
             child: Text(_error!, style: TextStyle(color: p.redInk, fontSize: 13)),
           ),
         const SizedBox(height: 12),
-        FilledButton(
+        LcButton(
+          _busy ? 'Conferindo…' : (creating ? 'Criar e sincronizar' : 'Entrar e sincronizar'),
+          icon: LucideIcons.lock,
           onPressed: _busy ? null : _submit,
-          child: Text(_busy ? 'Conferindo…' : (creating ? 'Criar e sincronizar' : 'Entrar e sincronizar')),
         ),
       ],
     );

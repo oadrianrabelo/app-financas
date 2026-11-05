@@ -16,7 +16,12 @@ Disponível − (Cartão + Casa + Pessoal + Outros) = Sobrou
   num post-it na página do mês. Entradas como empréstimo que voltou podem ser marcadas "sem dízimo".
 - Dízimo e oferta nascem **a entregar** (○); toque para marcar ✓ quando entregar.
 - Tema de **papel pautado** (ou Noite), com letra de mão e fonte dos números escolhíveis nos Ajustes.
-- Interface em **Inter**, com bordas finas e sem efeitos do Android; paleta de comandos e atalhos:
+- **Personalizável** (Ajustes → Aparência): 9 papéis (Papel, Sépia, Kraft, Contábil, Branco; Noite,
+  Grafite, Lousa, Meia-noite), cor da caneta, folha pautada/quadriculada/pontilhada/lisa, margem,
+  textura de papel, argolas de fichário, fonte da interface, letra de mão, fonte dos números e
+  tamanho do texto. Categorias, contas e contas fixas são editáveis.
+- Interface com **kit próprio** (`lib/ui/kit/kit.dart`, ícones Lucide): sem componentes do
+  Material; paleta de comandos e atalhos:
 
 | Atalho | O quê |
 |---|---|
@@ -49,7 +54,9 @@ lib/
   backup/backup.dart     exportar/importar JSON com mesclagem
   updates/               atualização automática (manifesto assinado + instalação)
   ui/pages/              Mês (o caderno), Lançamentos, Contas, Ajustes
-  ui/theme/              tema de papel (cores, pauta, componentes) e lista de fontes
+  ui/kit/kit.dart        componentes próprios: botões, campos, seletor, interruptor, grupos, diálogos, calendário
+  ui/theme/              papéis (themes.dart), fontes e montagem do tema (paper.dart)
+  ui/widgets/editors.dart   editar categoria, conta e conta fixa
   ui/nav.dart            liga atalhos e paleta à página do mês
   ui/widgets/command_palette.dart   a paleta de comandos (Ctrl/⌘ K)
   ui/widgets/ledger.dart peças da folha: pauta, títulos, linhas com ✓, post-it

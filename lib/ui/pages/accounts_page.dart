@@ -5,16 +5,10 @@ import '../../data/app_data.dart';
 import '../../data/database.dart';
 import '../../domain/finance.dart';
 import '../../domain/vale.dart';
+import '../kit/kit.dart';
+import '../theme/paper.dart';
 import '../widgets/common.dart';
-
-const accountTypeLabels = {
-  AccountType.corrente: '🏦 Conta corrente',
-  AccountType.poupanca: '🐷 Poupança',
-  AccountType.carteira: '👛 Carteira',
-  AccountType.cartao: '💳 Cartão de crédito',
-  AccountType.investimento: '📈 Investimento',
-  AccountType.vale: '🍽️ Vale-alimentação',
-};
+import '../widgets/editors.dart';
 
 class AccountsPage extends StatelessWidget {
   const AccountsPage({super.key});
@@ -23,10 +17,22 @@ class AccountsPage extends StatelessWidget {
     final scope = AppScope.of(context);
     final used = scope.data.entries.any((e) => e.accountId == a.id || e.toAccountId == a.id);
     if (used) {
-      if (await confirm(context, '"${a.name}" tem lançamentos. Arquivar a conta em vez de excluir?')) {
+      if (await lcConfirm(
+        context,
+        '"${a.name}" tem lançamentos, então não dá para excluir. Arquivar esconde a conta dos formulários, '
+        'mas mantém o histórico.',
+        confirm: 'Arquivar',
+        title: 'Arquivar conta?',
+      )) {
         await scope.db.setAccountArchived(a.id, true);
       }
-    } else if (await confirm(context, 'Excluir "${a.name}"?')) {
+    } else if (await lcConfirm(
+      context,
+      'Essa conta não tem lançamentos.',
+      confirm: 'Excluir',
+      danger: true,
+      title: 'Excluir "${a.name}"?',
+    )) {
       await scope.db.softDelete(scope.db.accounts, a.id);
     }
   }
@@ -34,147 +40,106 @@ class AccountsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = AppScope.of(context);
+    final p = Paper.of(context);
     return ListenableBuilder(
       listenable: scope.data,
-      builder: (context, _) => PageBody(
-        title: 'Contas',
-        fab: FloatingActionButton.extended(
-          onPressed: () => showDialog(context: context, builder: (_) => const _NewAccountDialog()),
-          icon: const Icon(Icons.add),
-          label: const Text('Nova conta'),
-        ),
-        children: [
-          Card(
-            child: Column(
+      builder: (context, _) {
+        final data = scope.data;
+        final now = DateTime.now();
+        int balanceOf(Account a) =>
+            a.type == AccountType.vale ? valeStatus(a, data.entries, now).left : accountBalance(a, data.entries);
+        final active = data.accounts.where((a) => !a.archived).toList();
+        final archived = data.accounts.where((a) => a.archived).toList();
+        final total = active.where((a) => a.type != AccountType.vale).fold(0, (s, a) => s + balanceOf(a));
+
+        Widget row(Account a) {
+          final balance = balanceOf(a);
+          final vale = a.type == AccountType.vale;
+          return LcRow(
+            dim: a.archived,
+            leading: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(color: p.ink.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(8)),
+              child: Icon(accountTypeIcons[a.type], size: 16, color: p.ink),
+            ),
+            title: a.name,
+            subtitle: vale
+                ? 'Vale · renova dia ${a.renewDay} com ${formatBRL(a.renewAmount ?? 0)}'
+                : accountTypeLabels[a.type],
+            onTap: () => showAccountEditor(context, editing: a),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                for (final a in scope.data.accounts)
-                  Opacity(
-                    opacity: a.archived ? 0.6 : 1,
-                    child: ListTile(
-                      title: Text(a.archived ? '${a.name} (arquivada)' : a.name),
-                      subtitle: Text(
-                        a.type == AccountType.vale
-                            ? '${accountTypeLabels[a.type]} · renova dia ${a.renewDay} com ${formatBRL(a.renewAmount ?? 0)}'
-                            : accountTypeLabels[a.type]!,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Builder(
-                            builder: (context) {
-                              // Vale: o que resta até a próxima renovação.
-                              final balance = a.type == AccountType.vale
-                                  ? valeStatus(a, scope.data.entries, DateTime.now()).left
-                                  : accountBalance(a, scope.data.entries);
-                              return Text(
-                                formatBRL(balance),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: balance < 0 ? moneyColor(context, positive: false) : null,
-                                ),
-                              );
-                            },
-                          ),
-                          a.archived
-                              ? IconButton(
-                                  tooltip: 'Desarquivar',
-                                  icon: const Icon(Icons.unarchive_outlined),
-                                  onPressed: () => scope.db.setAccountArchived(a.id, false),
-                                )
-                              : IconButton(
-                                  tooltip: 'Excluir / arquivar',
-                                  icon: const Icon(Icons.delete_outline),
-                                  onPressed: () => _remove(context, a),
-                                ),
-                        ],
-                      ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formatBRL(balance),
+                      style: p.mono(14, weight: FontWeight.w600, color: balance < 0 ? p.redInk : p.ink),
                     ),
-                  ),
+                    if (vale) Text('restam', style: TextStyle(fontSize: 11.5, color: p.pencil)),
+                  ],
+                ),
+                const SizedBox(width: 4),
+                a.archived
+                    ? LcIconButton(
+                        LucideIcons.archiveRestore,
+                        tooltip: 'Desarquivar',
+                        size: 15,
+                        onPressed: () => scope.db.setAccountArchived(a.id, false),
+                      )
+                    : LcIconButton(
+                        LucideIcons.archive,
+                        tooltip: 'Arquivar ou excluir',
+                        size: 15,
+                        onPressed: () => _remove(context, a),
+                      ),
               ],
             ),
+          );
+        }
+
+        return PageBody(
+          title: 'Contas',
+          subtitle: 'Onde o dinheiro está. Toque numa conta para editar.',
+          trailing: LcButton(
+            'Nova conta',
+            icon: LucideIcons.plus,
+            kind: LcButtonKind.secondary,
+            onPressed: () => showAccountEditor(context),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NewAccountDialog extends StatefulWidget {
-  const _NewAccountDialog();
-
-  @override
-  State<_NewAccountDialog> createState() => _NewAccountDialogState();
-}
-
-class _NewAccountDialogState extends State<_NewAccountDialog> {
-  final _name = TextEditingController();
-  final _initial = TextEditingController();
-  final _renewAmount = TextEditingController();
-  final _renewDay = TextEditingController(text: '20');
-  AccountType _type = AccountType.corrente;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Nova conta'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _name,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Nome', hintText: 'Ex.: Nubank'),
-          ),
-          DropdownButtonFormField(
-            initialValue: _type,
-            decoration: const InputDecoration(labelText: 'Tipo'),
-            items: [
-              for (final MapEntry(:key, :value) in accountTypeLabels.entries)
-                DropdownMenuItem(value: key, child: Text(value)),
-            ],
-            onChanged: (v) => setState(() => _type = v!),
-          ),
-          if (_type == AccountType.vale) ...[
-            TextField(
-              controller: _renewAmount,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Valor que entra todo mês', prefixText: r'R$ '),
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              margin: const EdgeInsets.only(bottom: 22),
+              decoration: BoxDecoration(
+                color: p.paper,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: hairline(p)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Saldo total',
+                    style: TextStyle(fontSize: 13, color: p.pencil, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatBRL(total),
+                    style: p.mono(30, weight: FontWeight.w700, color: total < 0 ? p.redInk : p.ink),
+                  ),
+                  Text('sem contar o vale', style: TextStyle(fontSize: 12, color: p.pencil)),
+                ],
+              ),
             ),
-            TextField(
-              controller: _renewDay,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Dia em que renova', hintText: '20'),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text('O vale fica fora do Disponível. Lance as compras com ele para ver quanto resta.'),
-            ),
-          ] else
-            TextField(
-              controller: _initial,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-              decoration: const InputDecoration(labelText: 'Saldo inicial', prefixText: r'R$ '),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(
-          onPressed: () async {
-            if (_name.text.trim().isEmpty) return;
-            final vale = _type == AccountType.vale;
-            await AppScope.of(context).db.addAccount(
-              name: _name.text.trim(),
-              type: _type,
-              initialBalance: vale ? 0 : parseBRL(_initial.text) ?? 0,
-              renewAmount: vale ? parseBRL(_renewAmount.text) ?? 0 : null,
-              renewDay: vale ? (int.tryParse(_renewDay.text) ?? 20).clamp(1, 28) : null,
-            );
-            if (context.mounted) Navigator.pop(context);
-          },
-          child: const Text('Adicionar'),
-        ),
-      ],
+            LcGroup(title: 'CONTAS', children: [for (final a in active) row(a)]),
+            if (archived.isNotEmpty) LcGroup(title: 'ARQUIVADAS', children: [for (final a in archived) row(a)]),
+          ],
+        );
+      },
     );
   }
 }

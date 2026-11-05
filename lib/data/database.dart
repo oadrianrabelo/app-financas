@@ -275,6 +275,40 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<void> updateAccount(
+    String id, {
+    required String name,
+    required AccountType type,
+    required int initialBalance,
+    int? renewDay,
+    int? renewAmount,
+  }) => (update(accounts)..where((a) => a.id.equals(id))).write(
+    AccountsCompanion(
+      name: Value(name),
+      type: Value(type),
+      initialBalance: Value(initialBalance),
+      renewDay: Value(renewDay),
+      renewAmount: Value(renewAmount),
+      updatedAt: Value(now()),
+    ),
+  );
+
+  Future<void> updateCategory(
+    String id, {
+    required String name,
+    required String icon,
+    required int color,
+    CategorySection? section,
+  }) => (update(categories)..where((c) => c.id.equals(id))).write(
+    CategoriesCompanion(
+      name: Value(name),
+      icon: Value(icon),
+      color: Value(color),
+      section: Value(section),
+      updatedAt: Value(now()),
+    ),
+  );
+
   Future<void> setAccountArchived(String id, bool archived) => (update(
     accounts,
   )..where((a) => a.id.equals(id))).write(AccountsCompanion(archived: Value(archived), updatedAt: Value(now())));
@@ -436,9 +470,10 @@ class AppDatabase extends _$AppDatabase {
     return recurringEntryId(id, startMonth);
   }
 
-  Future<void> updateRecurring(String id, {bool? active, bool? variable, int? amount, int? day}) =>
+  Future<void> updateRecurring(String id, {bool? active, bool? variable, int? amount, int? day, String? description}) =>
       (update(recurrings)..where((r) => r.id.equals(id))).write(
         RecurringsCompanion(
+          description: description == null ? const Value.absent() : Value(description),
           active: active == null ? const Value.absent() : Value(active),
           variable: variable == null ? const Value.absent() : Value(variable),
           amount: amount == null ? const Value.absent() : Value(amount),

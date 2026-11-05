@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -31,9 +32,17 @@ class LivroCaixaApp extends StatelessWidget {
         title: appName,
         debugShowCheckedModeBanner: false,
         scrollBehavior: const SoftScrollBehavior(),
-        theme: paperTheme(Brightness.light, hand: prefs.handFont, mono: prefs.monoFont),
-        darkTheme: paperTheme(Brightness.dark, hand: prefs.handFont, mono: prefs.monoFont),
+        theme: paperTheme(prefs.paper(Brightness.light)),
+        darkTheme: paperTheme(prefs.paper(Brightness.dark)),
         themeMode: prefs.themeMode,
+        // Tamanho do texto escolhido nos Ajustes (multiplica o do sistema).
+        builder: (context, child) {
+          final mq = MediaQuery.of(context);
+          return MediaQuery(
+            data: mq.copyWith(textScaler: _Scaled(mq.textScaler, prefs.textScale)),
+            child: child!,
+          );
+        },
         locale: const Locale('pt', 'BR'),
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -41,6 +50,19 @@ class LivroCaixaApp extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Scaled extends TextScaler {
+  const _Scaled(this.base, this.factor);
+  final TextScaler base;
+  final double factor;
+
+  @override
+  double scale(double fontSize) => base.scale(fontSize) * factor;
+
+  @override
+  // ignore: deprecated_member_use
+  double get textScaleFactor => base.scale(1) * factor;
 }
 
 class _Dest {
@@ -51,10 +73,10 @@ class _Dest {
 }
 
 const _destinations = [
-  _Dest('Mês', Icons.menu_book_outlined, Icons.menu_book, MonthPage()),
-  _Dest('Lançamentos', Icons.receipt_long_outlined, Icons.receipt_long, EntriesPage()),
-  _Dest('Contas', Icons.account_balance_outlined, Icons.account_balance, AccountsPage()),
-  _Dest('Ajustes', Icons.tune_outlined, Icons.tune, SettingsPage()),
+  _Dest('Mês', LucideIcons.bookOpen, LucideIcons.bookOpen, MonthPage()),
+  _Dest('Lançamentos', LucideIcons.list, LucideIcons.list, EntriesPage()),
+  _Dest('Contas', LucideIcons.wallet, LucideIcons.wallet, AccountsPage()),
+  _Dest('Ajustes', LucideIcons.settings2, LucideIcons.settings2, SettingsPage()),
 ];
 
 /// Chassi do app: barra lateral (computador) ou barra inferior (celular),
@@ -225,7 +247,7 @@ class _SidebarSearch extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
             children: [
-              Icon(Icons.search, size: 16, color: p.pencil),
+              Icon(LucideIcons.search, size: 16, color: p.pencil),
               const SizedBox(width: 8),
               Expanded(
                 child: Text('Buscar…', style: TextStyle(fontSize: 13.5, color: p.pencil)),
@@ -393,7 +415,7 @@ class _LaunchButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.edit_outlined, size: 17, color: p.paper),
+              Icon(LucideIcons.pencilLine, size: 16, color: p.paper),
               const SizedBox(width: 8),
               Text(
                 'Lançar',

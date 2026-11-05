@@ -1,9 +1,28 @@
 // Fontes embutidas no app (declaradas no pubspec.yaml, em assets/fonts/).
 // Para adicionar uma: coloque o .ttf, declare no pubspec e inclua aqui.
 
-const handFonts = ['Caveat', 'Kalam', 'Patrick Hand', 'Gochi Hand', 'Indie Flower'];
-const monoFonts = ['JetBrains Mono', 'IBM Plex Mono', 'Courier Prime', 'Space Mono'];
+const uiFonts = ['Inter', 'Geist', 'IBM Plex Sans', 'Atkinson Hyperlegible'];
+const handFonts = [
+  'Caveat',
+  'Kalam',
+  'Patrick Hand',
+  'Gochi Hand',
+  'Indie Flower',
+  'Architects Daughter',
+  'Sue Ellen Francisco',
+];
+const monoFonts = [
+  'JetBrains Mono',
+  'IBM Plex Mono',
+  'Geist Mono',
+  'DM Mono',
+  'Fira Code',
+  'Victor Mono',
+  'Courier Prime',
+  'Space Mono',
+];
 
+const defaultUiFont = 'Inter';
 const defaultHandFont = 'Caveat';
 const defaultMonoFont = 'JetBrains Mono';
 
@@ -12,5 +31,10 @@ double handScale(String family) => switch (family) {
   'Caveat' => 1.18,
   'Indie Flower' => 0.95,
   'Gochi Hand' => 1.02,
+  'Architects Daughter' => 0.86,
+  'Sue Ellen Francisco' => 1.1,
   _ => 1.0,
 };
+
+/// Tamanhos do texto (Ajustes → Aparência).
+const textScales = [(0.9, 'Pequeno'), (1.0, 'Normal'), (1.1, 'Grande'), (1.2, 'Maior')];
