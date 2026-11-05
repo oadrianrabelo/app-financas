@@ -19,7 +19,7 @@ import 'package:path_provider/path_provider.dart';
 import 'manifest.dart';
 import 'update_key.dart';
 
-const releasesRepo = 'oadrianrabelo/app-financas';
+const releasesRepo = 'oadrianrabelo/livro-caixa';
 const _base = 'https://github.com/$releasesRepo/releases/latest/download';
 const releasesPage = 'https://github.com/$releasesRepo/releases/latest';
 
