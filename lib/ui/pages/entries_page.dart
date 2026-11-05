@@ -27,7 +27,7 @@ class _EntriesPageState extends State<EntriesPage> {
       builder: (context, _) {
         final list = data
             .monthEntries(_month)
-            .where((e) => e.description.toLowerCase().contains(_search.toLowerCase()))
+            .where((e) => data.labelOf(e).toLowerCase().contains(_search.toLowerCase()))
             .toList();
 
         return PageBody(
@@ -83,6 +83,7 @@ class _EntryTile extends StatelessWidget {
       formatDate(e.date),
       data.account(e.accountId)?.name ?? '—',
       if (transfer) '→ ${data.account(e.toAccountId)?.name ?? '—'}',
+      ?data.person(e.personId)?.name,
       if (!e.paid) 'pendente',
     ].join(' · ');
 
@@ -90,10 +91,7 @@ class _EntryTile extends StatelessWidget {
       opacity: e.paid ? 1 : 0.6,
       child: ListTile(
         leading: Text(transfer ? '🔁' : cat?.icon ?? '•', style: const TextStyle(fontSize: 22)),
-        title: Text(
-          e.description.isNotEmpty ? e.description : cat?.name ?? 'Sem descrição',
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(data.labelOf(e), overflow: TextOverflow.ellipsis),
         subtitle: Text(subtitle),
         onTap: () => showEntryForm(context, editing: e),
         trailing: Row(

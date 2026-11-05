@@ -127,11 +127,15 @@ A importação junta tudo: vence a edição mais recente, e as exclusões també
 - [x] Página do mês no formato do caderno (Disponível, seções, Sobrou)
 - [x] Botão "Separar dízimo e oferta", com ajuste na hora e entradas sem dízimo
 - [x] Tema de papel, modo Noite e fontes escolhíveis
+- [x] Contas fixas que aparecem sozinhas todo mês (com "o valor muda", para a luz)
+- [x] Compras parceladas (1/2, 2/2)
+- [x] Quem lançou (pessoas da casa; cada aparelho tem a sua pessoa padrão)
+- [x] Vale-alimentação: fora do Disponível, mostra quanto resta e quando renova
+- [x] APK só arm64 (bem menor)
 
 **Próximos (combinados)**
-- [ ] Contas fixas que aparecem sozinhas todo mês (aluguel, internet, luz, academia, pão)
-- [ ] Cartões com fatura e parcelas (1/2, 2/2)
-- [ ] Quem lançou / quem recebeu (Adrian, Andressa) e fontes de renda (salário, alfajor, corridas)
+- [ ] Sincronizar os aparelhos do casal (os dois veem os mesmos gastos)
+- [ ] Cartões com fatura (compras somam na fatura do cartão)
 - [ ] "Guardado" (reservas, como as férias) e "A receber" (o adiantamento emprestado)
 
 **Fáceis**

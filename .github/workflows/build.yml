@@ -48,7 +48,9 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: livrocaixa
         run: |
-          flutter build apk --release --build-name "$VERSION" --build-number "$(scripts/build-number.sh "$VERSION")"
+          # Só arm64: cobre praticamente todos os celulares atuais e deixa o APK ~1/3 do tamanho.
+          flutter build apk --release --target-platform android-arm64 \
+            --build-name "$VERSION" --build-number "$(scripts/build-number.sh "$VERSION")"
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk "dist/LivroCaixa_${VERSION}_android.apk"
           gh release upload "$TAG" dist/*.apk --clobber

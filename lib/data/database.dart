@@ -26,7 +26,9 @@ part 'database.g.dart';
 //     test/drift/ confere que a migração chega exatamente no esquema novo.
 // ---------------------------------------------------------------------------
 
-enum AccountType { corrente, poupanca, carteira, cartao, investimento }
+/// `vale`: vale-alimentação. Fica FORA do Disponível: tem saldo próprio que
+/// renova todo mês no dia [Accounts.renewDay] com [Accounts.renewAmount].
+enum AccountType { corrente, poupanca, carteira, cartao, investimento, vale }
 
 enum CategoryKind { despesa, receita }
 
@@ -61,6 +63,8 @@ class Accounts extends Table with SyncColumns {
   TextColumn get type => textEnum<AccountType>()();
   IntColumn get initialBalance => integer().withDefault(const Constant(0))(); // centavos
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  IntColumn get renewDay => integer().nullable()(); // vale: dia do mês em que renova (1-28)
+  IntColumn get renewAmount => integer().nullable()(); // vale: valor que entra a cada renovação
 }
 
 class Categories extends Table with SyncColumns {
@@ -84,6 +88,33 @@ class Entries extends Table with SyncColumns {
   TextColumn get notes => text().nullable()();
   TextColumn get titheStatus => textEnum<TitheStatus>().nullable()();
   IntColumn get percentBp => integer().nullable()(); // dízimo/oferta: % usado, em centésimos (250 = 2,5%)
+  TextColumn get recurringId => text().nullable()(); // gerado por uma conta fixa
+  TextColumn get installmentGroup => text().nullable()(); // parcelas da mesma compra
+  IntColumn get installmentIndex => integer().nullable()(); // 1, 2, 3...
+  IntColumn get installmentCount => integer().nullable()(); // total de parcelas
+  TextColumn get personId => text().nullable()(); // quem lançou / de quem é
+}
+
+/// Conta fixa: aparece sozinha todo mês (aluguel, internet, luz, salário...).
+/// O lançamento de cada mês tem id FIXO `rec-<id>-<AAAA-MM>`: assim dois
+/// aparelhos geram o mesmo lançamento e a mesclagem não duplica.
+class Recurrings extends Table with SyncColumns {
+  TextColumn get type => textEnum<EntryType>()(); // despesa ou receita
+  TextColumn get description => text()();
+  IntColumn get amount => integer()(); // centavos (valor base)
+  BoolColumn get variable => boolean().withDefault(const Constant(false))(); // ex.: luz: repete o do mês anterior
+  IntColumn get day => integer()(); // dia do mês (1-28)
+  TextColumn get accountId => text()();
+  TextColumn get categoryId => text().nullable()();
+  TextColumn get personId => text().nullable()();
+  TextColumn get startMonth => text()(); // AAAA-MM
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+}
+
+/// Pessoas da casa (para saber quem lançou / de quem é o gasto).
+@DataClassName('Person')
+class People extends Table with SyncColumns {
+  TextColumn get name => text()();
 }
 
 /// Orçamento mensal por categoria (ainda sem tela: bom primeiro exercício!).
@@ -106,7 +137,7 @@ const _uuid = Uuid();
 String newId() => _uuid.v4();
 int now() => DateTime.now().millisecondsSinceEpoch;
 
-@DriftDatabase(tables: [Accounts, Categories, Entries, Budgets, Settings])
+@DriftDatabase(tables: [Accounts, Categories, Entries, Budgets, Settings, Recurrings, People])
 class AppDatabase extends _$AppDatabase {
   /// O arquivo `livro_caixa.sqlite` fica na pasta de dados do app
   /// (Windows: %APPDATA%, Linux: `~/.local/share/<id>`, Android: dados do app).
@@ -120,7 +151,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +167,7 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
       await _seedCategories();
+      await _seedPeople();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -145,8 +177,35 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.settings);
         await _seedCategories(); // cria Dízimo, Oferta etc. e preenche as seções
       },
+      from2To3: (m, schema) async {
+        await m.addColumn(schema.accounts, schema.accounts.renewDay);
+        await m.addColumn(schema.accounts, schema.accounts.renewAmount);
+        for (final c in [
+          schema.entries.recurringId,
+          schema.entries.installmentGroup,
+          schema.entries.installmentIndex,
+          schema.entries.installmentCount,
+          schema.entries.personId,
+        ]) {
+          await m.addColumn(schema.entries, c);
+        }
+        await m.createTable(schema.recurrings);
+        await m.createTable(schema.people);
+        await _seedPeople();
+      },
     ),
   );
+
+  /// As duas pessoas da casa, com IDs fixos (iguais em todos os aparelhos).
+  /// Os nomes podem ser trocados nos Ajustes.
+  Future<void> _seedPeople() async {
+    for (final (id, name) in [('seed-pessoa-1', 'Adrian'), ('seed-pessoa-2', 'Andressa')]) {
+      await customStatement('INSERT OR IGNORE INTO people (id, created_at, updated_at, name) VALUES (?, 0, 0, ?)', [
+        id,
+        name,
+      ]);
+    }
+  }
 
   /// Categorias padrão com IDs FIXOS e updatedAt = 0: assim o celular e o PC
   /// criam as mesmas, e a mesclagem do backup não duplica nada (qualquer
@@ -194,7 +253,13 @@ class AppDatabase extends _$AppDatabase {
 
   // ---- Escritas ----
 
-  Future<void> addAccount({required String name, required AccountType type, int initialBalance = 0}) {
+  Future<void> addAccount({
+    required String name,
+    required AccountType type,
+    int initialBalance = 0,
+    int? renewDay,
+    int? renewAmount,
+  }) {
     final t = now();
     return into(accounts).insert(
       AccountsCompanion.insert(
@@ -204,6 +269,8 @@ class AppDatabase extends _$AppDatabase {
         name: name,
         type: type,
         initialBalance: Value(initialBalance),
+        renewDay: Value(renewDay),
+        renewAmount: Value(renewAmount),
       ),
     );
   }
@@ -249,9 +316,11 @@ class AppDatabase extends _$AppDatabase {
     String? categoryId,
     required bool paid,
     TitheStatus? titheStatus,
+    String? personId,
   }) async {
     final t = now();
     var data = EntriesCompanion(
+      personId: Value(personId),
       type: Value(type),
       amount: Value(amount),
       date: Value(date),
@@ -324,6 +393,165 @@ class AppDatabase extends _$AppDatabase {
       await setTitheStatus(incomes.map((e) => e.id), TitheStatus.separado);
     });
   }
+
+  // ---- Contas fixas ----
+
+  Stream<List<Recurring>> watchRecurrings() =>
+      (select(recurrings)
+            ..where((r) => r.deletedAt.isNull())
+            ..orderBy([(r) => OrderingTerm(expression: r.day)]))
+          .watch();
+
+  /// Cria a conta fixa e já lança o mês [startMonth]. Devolve o id do lançamento.
+  Future<String> createRecurring({
+    required EntryType type,
+    required String description,
+    required int amount,
+    required bool variable,
+    required int day,
+    required String accountId,
+    String? categoryId,
+    String? personId,
+    required String startMonth,
+  }) async {
+    final t = now();
+    final id = newId();
+    await into(recurrings).insert(
+      RecurringsCompanion.insert(
+        id: id,
+        createdAt: t,
+        updatedAt: t,
+        type: type,
+        description: description,
+        amount: amount,
+        variable: Value(variable),
+        day: day.clamp(1, 28),
+        accountId: accountId,
+        categoryId: Value(categoryId),
+        personId: Value(personId),
+        startMonth: startMonth,
+      ),
+    );
+    await ensureRecurringEntries(startMonth);
+    return recurringEntryId(id, startMonth);
+  }
+
+  Future<void> updateRecurring(String id, {bool? active, bool? variable, int? amount, int? day}) =>
+      (update(recurrings)..where((r) => r.id.equals(id))).write(
+        RecurringsCompanion(
+          active: active == null ? const Value.absent() : Value(active),
+          variable: variable == null ? const Value.absent() : Value(variable),
+          amount: amount == null ? const Value.absent() : Value(amount),
+          day: day == null ? const Value.absent() : Value(day.clamp(1, 28)),
+          updatedAt: Value(now()),
+        ),
+      );
+
+  static String recurringEntryId(String recurringId, String month) => 'rec-$recurringId-$month';
+
+  /// Lança as contas fixas do mês que ainda não foram lançadas. Pode chamar
+  /// à vontade: o id fixo por mês impede duplicar, e um lançamento apagado
+  /// continua apagado (não volta).
+  Future<void> ensureRecurringEntries(String month) async {
+    final list = await (select(
+      recurrings,
+    )..where((r) => r.deletedAt.isNull() & r.active.equals(true) & r.startMonth.isSmallerOrEqualValue(month))).get();
+    if (list.isEmpty) return;
+    await transaction(() async {
+      for (final r in list) {
+        var amount = r.amount;
+        if (r.variable) {
+          // Valor que muda (luz, água): usa o do último mês lançado.
+          final last =
+              await (select(entries)
+                    ..where((e) => e.recurringId.equals(r.id) & e.date.isSmallerThanValue('$month-01'))
+                    ..orderBy([(e) => OrderingTerm.desc(e.date)])
+                    ..limit(1))
+                  .getSingleOrNull();
+          amount = last?.amount ?? r.amount;
+        }
+        final t = now();
+        await into(entries).insert(
+          EntriesCompanion.insert(
+            id: recurringEntryId(r.id, month),
+            createdAt: t,
+            updatedAt: t,
+            type: r.type,
+            amount: amount,
+            date: '$month-${r.day.toString().padLeft(2, '0')}',
+            description: Value(r.description),
+            accountId: r.accountId,
+            categoryId: Value(r.categoryId),
+            personId: Value(r.personId),
+            paid: const Value(false),
+            recurringId: Value(r.id),
+            titheStatus: Value(r.type == EntryType.receita ? TitheStatus.pendente : null),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+      }
+    });
+  }
+
+  // ---- Parcelas ----
+
+  /// Lança uma compra parcelada: uma parcela por mês a partir de [date].
+  /// [installment] é o valor de cada parcela. Devolve o id da primeira.
+  Future<String> saveInstallments({
+    required int installment,
+    required int count,
+    required String date,
+    required String description,
+    required String accountId,
+    String? categoryId,
+    String? personId,
+    required bool firstPaid,
+  }) async {
+    final group = newId();
+    final [y, m, d] = date.split('-').map(int.parse).toList();
+    String? firstId;
+    await transaction(() async {
+      for (var i = 1; i <= count; i++) {
+        final month = DateTime(y, m + i - 1);
+        final lastDay = DateTime(month.year, month.month + 1, 0).day;
+        final day = d > lastDay ? lastDay : d;
+        final t = now();
+        final id = newId();
+        firstId ??= id;
+        await into(entries).insert(
+          EntriesCompanion.insert(
+            id: id,
+            createdAt: t,
+            updatedAt: t,
+            type: EntryType.despesa,
+            amount: installment,
+            date: '${month.year}-${month.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+            description: Value(description),
+            accountId: accountId,
+            categoryId: Value(categoryId),
+            personId: Value(personId),
+            paid: Value(i == 1 && firstPaid),
+            installmentGroup: Value(group),
+            installmentIndex: Value(i),
+            installmentCount: Value(count),
+          ),
+        );
+      }
+    });
+    return firstId!;
+  }
+
+  // ---- Pessoas ----
+
+  Stream<List<Person>> watchPeople() =>
+      (select(people)
+            ..where((p) => p.deletedAt.isNull())
+            ..orderBy([(p) => OrderingTerm(expression: p.id)]))
+          .watch();
+
+  Future<void> renamePerson(String id, String name) => (update(
+    people,
+  )..where((p) => p.id.equals(id))).write(PeopleCompanion(name: Value(name), updatedAt: Value(now())));
 
   // ---- Preferências ----
 

@@ -36,7 +36,11 @@ class MonthSummary {
     CategorySection.outros: [],
   };
 
+  /// Gastos pagos com o vale-alimentação: aparecem, mas não saem do Disponível.
+  final List<Entry> vale = [];
+
   int get income => _sum(incomes);
+  int get valeSpent => _sum(vale);
   int get tithe => _sum(tithes);
   int get offering => _sum(offerings);
 
@@ -57,11 +61,21 @@ class MonthSummary {
 }
 
 /// Resumo de um mês ("AAAA-MM"). Transferências não entram (o dinheiro só muda de lugar).
-MonthSummary monthSummary(Iterable<Entry> entries, Iterable<Category> categories, String month) {
+/// Lançamentos nas contas [valeAccounts] (vale-alimentação) ficam à parte.
+MonthSummary monthSummary(
+  Iterable<Entry> entries,
+  Iterable<Category> categories,
+  String month, {
+  Set<String> valeAccounts = const {},
+}) {
   final sectionOf = {for (final c in categories) c.id: c.section};
   final s = MonthSummary();
   for (final e in entries) {
     if (e.deletedAt != null || !e.date.startsWith(month)) continue;
+    if (valeAccounts.contains(e.accountId)) {
+      if (e.type == EntryType.despesa) s.vale.add(e);
+      continue;
+    }
     switch (e.type) {
       case EntryType.receita:
         s.incomes.add(e);
@@ -75,7 +89,7 @@ MonthSummary monthSummary(Iterable<Entry> entries, Iterable<Category> categories
       case EntryType.transferencia:
     }
   }
-  for (final l in [s.incomes, s.tithes, s.offerings, ...s.sections.values]) {
+  for (final l in [s.incomes, s.tithes, s.offerings, s.vale, ...s.sections.values]) {
     l.sort((a, b) => a.date.compareTo(b.date) != 0 ? a.date.compareTo(b.date) : a.createdAt.compareTo(b.createdAt));
   }
   return s;

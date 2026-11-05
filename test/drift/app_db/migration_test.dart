@@ -9,6 +9,7 @@ import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -81,6 +82,38 @@ void main() {
         final entries = await newDb.select(newDb.entries).get();
         expect(entries.single.amount, 405301);
         expect(entries.single.titheStatus, isNull); // antigas não são cobradas
+      },
+    );
+  });
+
+  test('v2 -> v3 preserva lançamentos e cria as pessoas da casa', () async {
+    await verifier.testWithDataIntegrity(
+      oldVersion: 2,
+      newVersion: 3,
+      createOld: v2.DatabaseAtV2.new,
+      createNew: v3.DatabaseAtV3.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.entries, [
+          const v2.EntriesData(
+            id: 'e1',
+            createdAt: 1,
+            updatedAt: 1,
+            type: 'receita',
+            amount: 405301,
+            date: '2026-11-05',
+            description: 'Salário',
+            accountId: 'seed-conta-carteira',
+            paid: 1,
+            titheStatus: 'separado',
+          ),
+        ]);
+      },
+      validateItems: (newDb) async {
+        final e = (await newDb.select(newDb.entries).get()).single;
+        expect(e.titheStatus, 'separado');
+        expect(e.recurringId, isNull);
+        expect((await newDb.select(newDb.people).get()).map((p) => p.name), ['Adrian', 'Andressa']);
       },
     );
   });
