@@ -66,6 +66,13 @@ dart run tool/gen_keys.dart
 Isso grava a chave pública em `lib/updates/update_key.dart` (faça commit) e mostra a chave privada:
 coloque-a no secret **`UPDATE_SIGNING_KEY`**.
 
+Sem Dart instalado, dá para gerar com `openssl` (Linux, macOS ou Git Bash no Windows):
+```bash
+openssl genpkey -algorithm ed25519 -out tostao-update.pem
+openssl pkey -in tostao-update.pem -outform DER | tail -c 32 | base64          # privada -> secret
+openssl pkey -in tostao-update.pem -pubout -outform DER | tail -c 32 | base64  # pública -> update_key.dart
+```
+
 **2. Keystore do Android**
 ```bash
 keytool -genkeypair -v -keystore tostao-release.jks -alias tostao \

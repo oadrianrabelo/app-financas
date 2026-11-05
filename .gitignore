@@ -52,3 +52,6 @@ app.*.map.json
 *.jks
 *.keystore
 key.properties
+
+# Chave de atualização
+*.pem
