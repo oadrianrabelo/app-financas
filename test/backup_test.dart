@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tostao/backup/backup.dart';
-import 'package:tostao/data/database.dart';
+import 'package:livro_caixa/backup/backup.dart';
+import 'package:livro_caixa/data/database.dart';
 
 void main() {
   test('mescla mantendo a versão mais recente de cada registro', () async {

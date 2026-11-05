@@ -40,17 +40,17 @@ jobs:
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "::error::Secret ANDROID_KEYSTORE_BASE64 não configurado (veja o README)."; exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/tostao-release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/tostao-release.jks" >> "$GITHUB_ENV"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/livro-caixa-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/livro-caixa-release.jks" >> "$GITHUB_ENV"
 
       - name: APK assinado
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: tostao
+          ANDROID_KEY_ALIAS: livrocaixa
         run: |
           flutter build apk --release --build-name "$VERSION" --build-number "$(scripts/build-number.sh "$VERSION")"
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/Tostao_${VERSION}_android.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/LivroCaixa_${VERSION}_android.apk"
           gh release upload "$TAG" dist/*.apk --clobber
 
   windows:
@@ -74,7 +74,7 @@ jobs:
         run: |
           ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
           [ -f "$ISCC" ] || choco install innosetup --no-progress -y
-          "$ISCC" "//DAppVersion=$VERSION" packaging/windows/tostao.iss
+          "$ISCC" "//DAppVersion=$VERSION" packaging/windows/livro-caixa.iss
           gh release upload "$TAG" dist/*.exe --clobber
 
   linux:
@@ -95,5 +95,5 @@ jobs:
       - name: AppImage e .tar.gz
         run: |
           scripts/build-appimage.sh "$VERSION"
-          tar -C build/linux/x64/release/bundle -czf "dist/Tostao_${VERSION}_linux-x86_64.tar.gz" .
+          tar -C build/linux/x64/release/bundle -czf "dist/LivroCaixa_${VERSION}_linux-x86_64.tar.gz" .
           gh release upload "$TAG" dist/*.AppImage dist/*.tar.gz --clobber

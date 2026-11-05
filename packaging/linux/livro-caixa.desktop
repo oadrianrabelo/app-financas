@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=Tostão
+Name=Livro-Caixa
 Comment=Finanças da casa, offline
-Exec=tostao
-Icon=tostao
+Exec=livro-caixa
+Icon=livro-caixa
 Categories=Office;Finance;
 Terminal=false

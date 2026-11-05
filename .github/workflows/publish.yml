@@ -34,7 +34,7 @@ jobs:
           mkdir -p dist
           gh release download "$TAG" --dir dist --pattern '*.apk' --pattern '*-setup.exe' --pattern '*.AppImage'
           ls -la dist
-          for f in "Tostao_${VERSION}_android.apk" "Tostao_${VERSION}_windows-x64-setup.exe" "Tostao_${VERSION}_linux-x86_64.AppImage"; do
+          for f in "LivroCaixa_${VERSION}_android.apk" "LivroCaixa_${VERSION}_windows-x64-setup.exe" "LivroCaixa_${VERSION}_linux-x86_64.AppImage"; do
             [ -f "dist/$f" ] || { echo "::error::Falta na release: $f"; exit 1; }
           done
 
@@ -48,9 +48,9 @@ jobs:
             --notes "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" \
             --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}" \
             --out dist \
-            android="dist/Tostao_${VERSION}_android.apk" \
-            windows-x64="dist/Tostao_${VERSION}_windows-x64-setup.exe" \
-            linux-x64="dist/Tostao_${VERSION}_linux-x86_64.AppImage"
+            android="dist/LivroCaixa_${VERSION}_android.apk" \
+            windows-x64="dist/LivroCaixa_${VERSION}_windows-x64-setup.exe" \
+            linux-x64="dist/LivroCaixa_${VERSION}_linux-x86_64.AppImage"
           gh release upload "$TAG" dist/latest.json dist/latest.json.sig --clobber
 
       - name: Como instalar (nas notas)
@@ -67,7 +67,7 @@ jobs:
           - **Windows**: baixe o \`_windows-x64-setup.exe\`. Se aparecer “O Windows protegeu o computador”, clique em *Mais informações → Executar assim mesmo*.
           - **Linux**: baixe o \`.AppImage\`, dê permissão de execução (\`chmod +x\`) e abra. Também tem o \`.tar.gz\`.
 
-          Quem já tem o Tostão instalado recebe esta versão sozinho: o app baixa em segundo plano e mostra **Atualizar agora**.
+          Quem já tem o Livro-Caixa instalado recebe esta versão sozinho: o app baixa em segundo plano e mostra **Atualizar agora**.
           NOTES
           sed -i 's/^          //' "$RUNNER_TEMP/notes.md"
           gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"

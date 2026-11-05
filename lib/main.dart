@@ -16,5 +16,5 @@ Future<void> main() async {
   // Procura atualização ao abrir, sem atrapalhar (erros ficam só na tela de Ajustes).
   updater.check();
 
-  runApp(AppScope(db: db, data: data, updater: updater, child: const TostaoApp()));
+  runApp(AppScope(db: db, data: data, updater: updater, child: const LivroCaixaApp()));
 }

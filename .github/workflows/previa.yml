@@ -28,7 +28,7 @@ jobs:
           version=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)
           tag="v${version}-previa.${{ github.run_number }}"
           gh release create "$tag" --prerelease --target "$GITHUB_SHA" \
-            --title "Tostão ${version} (prévia ${{ github.run_number }})" \
+            --title "Livro-Caixa ${version} (prévia ${{ github.run_number }})" \
             --notes "Instaladores de teste gerados a partir da branch \`${GITHUB_REF_NAME}\`."
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"

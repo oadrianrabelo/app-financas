@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "dart",
-      "package-name": "tostao",
+      "package-name": "livro-caixa",
       "include-component-in-tag": false,
       "bump-minor-pre-major": true,
       "changelog-sections": [

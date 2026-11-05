@@ -36,7 +36,7 @@ class Updater extends ChangeNotifier {
   Updater({http.Client? client}) : _http = client ?? http.Client();
 
   final http.Client _http;
-  static const _channel = MethodChannel('tostao/updates');
+  static const _channel = MethodChannel('livro_caixa/updates');
 
   UpdateStatus status = UpdateStatus.idle;
   UpdateManifest? available;

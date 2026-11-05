@@ -1,11 +1,11 @@
 // Usado pelo CI: monta e assina o latest.json da release.
 //   UPDATE_SIGNING_KEY=... dart run tool/make_manifest.dart \
 //     --version 0.2.0 --notes "https://..." --base-url https://github.com/.../download/v0.2.0 \
-//     --out dist android=dist/Tostao_0.2.0_android.apk windows-x64=dist/... linux-x64=dist/...
+//     --out dist android=dist/LivroCaixa_0.2.0_android.apk windows-x64=dist/... linux-x64=dist/...
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tostao/updates/manifest.dart';
+import 'package:livro_caixa/updates/manifest.dart';
 
 Future<void> main(List<String> args) async {
   final opts = <String, String>{};

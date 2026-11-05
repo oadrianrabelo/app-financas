@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.oadrianrabelo.tostao"
+    namespace = "io.github.oadrianrabelo.livrocaixa"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -17,7 +17,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.oadrianrabelo.tostao"
+        applicationId = "io.github.oadrianrabelo.livrocaixa"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // O CI passa --build-name/--build-number calculados a partir da versão.
@@ -34,7 +34,7 @@ android {
             create("release") {
                 storeFile = File(keystorePath)
                 storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "tostao"
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "livrocaixa"
                 keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
             }
         }

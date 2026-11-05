@@ -30,7 +30,7 @@ class _BackupCard extends StatelessWidget {
     final db = AppScope.of(context).db;
     final json = const JsonEncoder.withIndent('  ').convert(await exportData(db));
     final saved = await FilePicker.saveFile(
-      fileName: 'tostao-backup-${today()}.json',
+      fileName: 'livro-caixa-backup-${today()}.json',
       bytes: Uint8List.fromList(utf8.encode(json)),
       mimeType: 'application/json',
     );
