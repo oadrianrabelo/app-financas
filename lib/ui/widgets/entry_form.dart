@@ -62,7 +62,22 @@ class _EntryFormState extends State<EntryForm> {
   late String? _categoryId = widget.editing?.categoryId;
   late bool _paid = widget.editing?.paid ?? true;
   late bool _tithable = widget.editing?.titheStatus != TitheStatus.isento;
+  String? _personId;
+  bool _personReady = false;
+  bool _recurring = false; // conta fixa (só ao criar)
+  bool _variable = false; // conta fixa cujo valor muda (luz)
+  int _installments = 1; // parcelas (só ao criar um gasto)
   String? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_personReady) return;
+    _personReady = true;
+    _personId = widget.editing != null ? widget.editing!.personId : AppScope.of(context).prefs.mePerson;
+  }
+
+  bool get _isNew => widget.editing == null;
 
   /// Situação do dízimo a gravar (só para entradas).
   TitheStatus? get _titheStatus {
@@ -98,18 +113,49 @@ class _EntryFormState extends State<EntryForm> {
     if (error != null) return setState(() => _error = error);
 
     final transfer = _type == EntryType.transferencia;
-    final id = await scope.db.saveEntry(
-      id: widget.editing?.id,
-      type: _type,
-      amount: cents!,
-      date: _date,
-      description: _description.text.trim().isEmpty && transfer ? 'Transferência' : _description.text.trim(),
-      accountId: from!,
-      toAccountId: transfer ? _toAccountId : null,
-      categoryId: transfer ? null : _categoryId,
-      paid: _paid,
-      titheStatus: _titheStatus,
-    );
+    final description = _description.text.trim();
+    final db = scope.db;
+    String id;
+    if (_isNew && _recurring && !transfer) {
+      id = await db.createRecurring(
+        type: _type,
+        description: description.isEmpty ? scope.data.category(_categoryId)?.name ?? 'Conta fixa' : description,
+        amount: cents!,
+        variable: _variable,
+        day: int.parse(_date.substring(8)),
+        accountId: from!,
+        categoryId: _categoryId,
+        personId: _personId,
+        startMonth: monthOf(_date),
+      );
+      if (_paid) await db.setPaid(id, true);
+      if (_type == EntryType.receita && !_tithable) await db.setTitheStatus([id], TitheStatus.isento);
+    } else if (_isNew && _installments > 1 && _type == EntryType.despesa) {
+      id = await db.saveInstallments(
+        installment: cents!,
+        count: _installments,
+        date: _date,
+        description: description,
+        accountId: from!,
+        categoryId: _categoryId,
+        personId: _personId,
+        firstPaid: _paid,
+      );
+    } else {
+      id = await db.saveEntry(
+        id: widget.editing?.id,
+        type: _type,
+        amount: cents!,
+        date: _date,
+        description: description.isEmpty && transfer ? 'Transferência' : description,
+        accountId: from!,
+        toAccountId: transfer ? _toAccountId : null,
+        categoryId: transfer ? null : _categoryId,
+        paid: _paid,
+        titheStatus: _titheStatus,
+        personId: _personId,
+      );
+    }
     if (mounted) Navigator.pop(context, id);
   }
 
@@ -126,8 +172,15 @@ class _EntryFormState extends State<EntryForm> {
   @override
   Widget build(BuildContext context) {
     final data = AppScope.of(context).data;
-    final accounts = data.accounts.where((a) => !a.archived || a.id == _accountId).toList();
-    final from = _accountId ?? accounts.firstOrNull?.id;
+    // Vale-alimentação só serve para gastos.
+    final accounts = data.accounts
+        .where((a) => !a.archived || a.id == _accountId)
+        .where((a) => _type == EntryType.despesa || a.type != AccountType.vale)
+        .toList();
+    final from = accounts.any((a) => a.id == _accountId) ? _accountId : accounts.firstOrNull?.id;
+    final onVale = data.valeAccountIds.contains(from);
+    final editing = widget.editing;
+    final rec = data.recurring(editing?.recurringId);
     final kind = _type == EntryType.receita ? CategoryKind.receita : CategoryKind.despesa;
     final categories = data.categories.where((c) => c.kind == kind).toList();
     const gap = SizedBox(height: 12);
@@ -154,6 +207,7 @@ class _EntryFormState extends State<EntryForm> {
           TextField(
             controller: _amount,
             autofocus: widget.editing == null,
+            onChanged: (_) => _installments > 1 ? setState(() {}) : null,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(labelText: 'Valor', prefixText: r'R$ ', border: OutlineInputBorder()),
           ),
@@ -210,6 +264,104 @@ class _EntryFormState extends State<EntryForm> {
                 for (final c in categories) DropdownMenuItem(value: c.id, child: Text('${c.icon} ${c.name}')),
               ],
               onChanged: (v) => setState(() => _categoryId = v),
+            ),
+          if (onVale)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Pago com o vale-alimentação: não sai do Disponível.',
+                style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+              ),
+            ),
+          if (_type != EntryType.transferencia && data.people.isNotEmpty) ...[
+            gap,
+            Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Text('Quem:'),
+                for (final p in data.people)
+                  ChoiceChip(
+                    label: Text(p.name),
+                    selected: _personId == p.id,
+                    onSelected: (v) => setState(() => _personId = v ? p.id : null),
+                  ),
+              ],
+            ),
+          ],
+          if (_isNew && _type != EntryType.transferencia) ...[
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _recurring,
+              title: const Text('Conta fixa (repete todo mês)'),
+              subtitle: const Text('Ex.: aluguel, internet, salário. Aparece sozinha nos próximos meses.'),
+              onChanged: (v) => setState(() {
+                _recurring = v ?? false;
+                if (_recurring) _installments = 1;
+              }),
+            ),
+            if (_recurring)
+              CheckboxListTile(
+                contentPadding: const EdgeInsets.only(left: 32),
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _variable,
+                title: const Text('O valor muda todo mês'),
+                subtitle: const Text('Ex.: luz. O mês seguinte vem com o valor deste, para você corrigir.'),
+                onChanged: (v) => setState(() => _variable = v ?? false),
+              ),
+          ],
+          if (_isNew && _type == EntryType.despesa && !_recurring)
+            Row(
+              children: [
+                const Text('Parcelas:'),
+                IconButton(
+                  onPressed: _installments > 1 ? () => setState(() => _installments--) : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                Text('$_installments×', style: const TextStyle(fontWeight: FontWeight.w700)),
+                IconButton(
+                  onPressed: _installments < 48 ? () => setState(() => _installments++) : null,
+                  icon: const Icon(Icons.add),
+                ),
+                if (_installments > 1)
+                  Expanded(
+                    child: Text(
+                      'O valor acima é o de cada parcela'
+                      '${parseBRL(_amount.text) != null ? ' (total ${formatBRL(parseBRL(_amount.text)! * _installments)})' : ''}.',
+                    ),
+                  ),
+              ],
+            ),
+          if (editing?.installmentCount != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Parcela ${editing!.installmentIndex} de ${editing.installmentCount}. A edição vale só para esta.',
+              ),
+            ),
+          if (rec != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    rec.active
+                        ? 'Conta fixa: a edição vale só para este mês.'
+                        : 'Conta fixa parada (não aparece nos próximos meses).',
+                  ),
+                ),
+                if (rec.active)
+                  TextButton(
+                    onPressed: () async {
+                      await AppScope.of(context).db.updateRecurring(rec.id, active: false);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(content: Text('Não vai mais repetir nos próximos meses.')));
+                      }
+                    },
+                    child: const Text('Parar de repetir'),
+                  ),
+              ],
             ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,

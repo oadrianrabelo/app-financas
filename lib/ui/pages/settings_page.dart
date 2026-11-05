@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../backup/backup.dart';
+import '../../core/money.dart';
 import '../../core/dates.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
@@ -21,7 +22,15 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const PageBody(
       title: 'Ajustes',
-      children: [_TitheCard(), _LookCard(), _BackupCard(), _UpdatesCard(), _CategoriesCard()],
+      children: [
+        _TitheCard(),
+        _RecurringCard(),
+        _PeopleCard(),
+        _LookCard(),
+        _BackupCard(),
+        _UpdatesCard(),
+        _CategoriesCard(),
+      ],
     );
   }
 }
@@ -126,6 +135,117 @@ class _PercentFieldState extends State<_PercentField> {
       onTapOutside: (_) => _focus.unfocus(),
     ),
   );
+}
+
+class _RecurringCard extends StatelessWidget {
+  const _RecurringCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = AppScope.of(context);
+    return ListenableBuilder(
+      listenable: scope.data,
+      builder: (context, _) {
+        final list = scope.data.recurrings;
+        return Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                title: Text('Contas fixas', style: Theme.of(context).textTheme.titleMedium),
+                subtitle: const Text(
+                  'Aparecem sozinhas todo mês para marcar ✓. Para criar, marque "Conta fixa" ao lançar.',
+                ),
+              ),
+              if (list.isEmpty) const ListTile(title: Text('Nenhuma ainda.')),
+              for (final r in list)
+                ListTile(
+                  enabled: r.active,
+                  title: Text(r.description),
+                  subtitle: Text(
+                    [
+                      r.type == EntryType.receita ? 'Entrada' : 'Gasto',
+                      'dia ${r.day}',
+                      r.variable ? 'valor muda (repete o do mês anterior)' : formatBRL(r.amount),
+                      if (!r.active) 'parada',
+                    ].join(' · '),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: r.variable ? 'Valor fixo' : 'O valor muda todo mês',
+                        icon: Icon(r.variable ? Icons.trending_flat : Icons.show_chart),
+                        onPressed: r.active ? () => scope.db.updateRecurring(r.id, variable: !r.variable) : null,
+                      ),
+                      IconButton(
+                        tooltip: r.active ? 'Parar de repetir' : 'Voltar a repetir',
+                        icon: Icon(r.active ? Icons.pause_circle_outline : Icons.play_circle_outline),
+                        onPressed: () => scope.db.updateRecurring(r.id, active: !r.active),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PeopleCard extends StatelessWidget {
+  const _PeopleCard();
+
+  Future<void> _rename(BuildContext context, Person person) async {
+    final controller = TextEditingController(text: person.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Nome'),
+        content: TextField(controller: controller, autofocus: true),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(c, controller.text.trim()), child: const Text('Salvar')),
+        ],
+      ),
+    );
+    if (name != null && name.isNotEmpty && context.mounted) await AppScope.of(context).db.renamePerson(person.id, name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = AppScope.of(context);
+    return ListenableBuilder(
+      listenable: Listenable.merge([scope.data, scope.prefs]),
+      builder: (context, _) => Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              title: Text('Pessoas da casa', style: Theme.of(context).textTheme.titleMedium),
+              subtitle: const Text('Escolha de quem é este aparelho: é quem vem marcado ao lançar.'),
+            ),
+            for (final p in scope.data.people)
+              RadioListTile<String>(
+                value: p.id,
+                // ignore: deprecated_member_use
+                groupValue: scope.prefs.mePerson,
+                // ignore: deprecated_member_use
+                onChanged: (v) => scope.prefs.setMePerson(v!),
+                title: Text(p.name),
+                subtitle: scope.prefs.mePerson == p.id ? const Text('Este aparelho') : null,
+                secondary: IconButton(
+                  tooltip: 'Trocar o nome',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _rename(context, p),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _LookCard extends StatelessWidget {

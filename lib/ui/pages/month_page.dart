@@ -6,6 +6,7 @@ import '../../data/app_data.dart';
 import '../../data/database.dart';
 import '../../domain/finance.dart';
 import '../../domain/tithe.dart';
+import '../../domain/vale.dart';
 import '../theme/paper.dart';
 import '../widgets/entry_form.dart';
 import '../widgets/ledger.dart';
@@ -82,7 +83,13 @@ class _MonthPageState extends State<MonthPage> {
           Expanded(
             child: PageView.builder(
               controller: _controller,
-              onPageChanged: (i) => setState(() => _month = _monthAt(i)),
+              onPageChanged: (i) {
+                setState(() => _month = _monthAt(i));
+                // Contas fixas: lança o mês ao abrir (até o mês que vem, para planejar).
+                if (_month.compareTo(addMonths(_thisMonth, 1)) <= 0) {
+                  AppScope.of(context).db.ensureRecurringEntries(_month);
+                }
+              },
               itemBuilder: (context, i) => _MonthSheet(month: _monthAt(i)),
             ),
           ),
@@ -90,6 +97,47 @@ class _MonthPageState extends State<MonthPage> {
       ),
     );
   }
+}
+
+/// Vale-alimentação: quanto resta até renovar. Fica fora do Disponível e do Sobrou.
+List<Widget> _valeBlock(BuildContext context, MonthSummary s) {
+  final scope = AppScope.of(context);
+  final p = Paper.of(context);
+  final data = scope.data;
+  final vales = data.accounts.where((a) => a.type == AccountType.vale && !a.archived).toList();
+  if (vales.isEmpty) return const [];
+  final now = DateTime.now();
+  return [
+    LedgerHeading(
+      'Vale',
+      trailing: Text('fora do disponível', style: p.hand(17, color: p.pencil)),
+    ),
+    for (final v in vales)
+      Builder(
+        builder: (context) {
+          final st = valeStatus(v, data.entries, now);
+          final days = st.daysUntilRenewal(now);
+          return StickyNote(
+            text:
+                '${v.name}: restam ${formatBRL(st.left)}\n'
+                'renova dia ${v.renewDay} (${days == 0
+                    ? 'hoje'
+                    : days == 1
+                    ? 'amanhã'
+                    : 'em $days dias'})',
+          );
+        },
+      ),
+    for (final e in s.vale)
+      LedgerRow(
+        label: data.labelOf(e),
+        value: e.amount,
+        color: p.pencil,
+        checked: e.paid,
+        onCheck: () => scope.db.setPaid(e.id, !e.paid),
+        onTap: () => showEntryForm(context, editing: e),
+      ),
+  ];
 }
 
 String _defaultDate(String month) => month == monthOf(today()) ? today() : '$month-01';
@@ -104,7 +152,7 @@ class _MonthSheet extends StatelessWidget {
     return ListenableBuilder(
       listenable: data,
       builder: (context, _) {
-        final s = monthSummary(data.entries, data.categories, month);
+        final s = monthSummary(data.entries, data.categories, month, valeAccounts: data.valeAccountIds);
         final pending = pendingTithe(data.entries, month: month);
         return LayoutBuilder(
           builder: (context, c) {
@@ -148,8 +196,6 @@ class _MonthSheet extends StatelessWidget {
     final scope = AppScope.of(context);
     final p = Paper.of(context);
     final data = scope.data;
-    String labelOf(Entry e) =>
-        e.description.isNotEmpty ? e.description : data.category(e.categoryId)?.name ?? 'Entrada';
     final pendingTotal = pending.fold(0, (sum, e) => sum + e.amount);
 
     return [
@@ -165,8 +211,10 @@ class _MonthSheet extends StatelessWidget {
       if (s.incomes.isEmpty) LedgerRow(label: 'Nenhuma entrada ainda', color: p.pencil),
       for (final e in s.incomes)
         LedgerRow(
-          label: labelOf(e),
+          label: data.labelOf(e),
           value: e.amount,
+          checked: e.recurringId != null ? e.paid : null, // entrada fixa: ✓ quando cair
+          onCheck: () => scope.db.setPaid(e.id, !e.paid),
           note: switch (e.titheStatus) {
             TitheStatus.pendente => 'dízimo pendente',
             TitheStatus.isento => 'sem dízimo',
@@ -217,13 +265,15 @@ class _MonthSheet extends StatelessWidget {
           ),
           for (final e in list)
             LedgerRow(
-              label: e.description.isNotEmpty ? e.description : data.category(e.categoryId)?.name ?? 'Gasto',
+              label: data.labelOf(e),
+              note: e.recurringId != null ? 'fixa' : null,
               value: e.amount,
               checked: e.paid,
               onCheck: () => scope.db.setPaid(e.id, !e.paid),
               onTap: () => showEntryForm(context, editing: e),
             ),
         ],
+      ..._valeBlock(context, s),
       const LedgerGap(),
       LedgerRow(
         label: s.left >= 0 ? 'Sobrou' : 'Faltou',

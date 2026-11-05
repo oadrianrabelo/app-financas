@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../core/dates.dart';
+
 import '../updates/updater.dart';
 import 'database.dart';
 import 'prefs.dart';
@@ -15,7 +17,10 @@ class AppData extends ChangeNotifier {
       db.watchAccounts().listen((v) => _set(() => accounts = v)),
       db.watchCategories().listen((v) => _set(() => categories = v)),
       db.watchAllEntries().listen((v) => _set(() => entries = v)),
+      db.watchRecurrings().listen((v) => _set(() => recurrings = v)),
+      db.watchPeople().listen((v) => _set(() => people = v)),
     ];
+    db.ensureRecurringEntries(monthOf(today())); // contas fixas do mês atual
   }
 
   final AppDatabase db;
@@ -24,6 +29,25 @@ class AppData extends ChangeNotifier {
   List<Account> accounts = [];
   List<Category> categories = [];
   List<Entry> entries = [];
+  List<Recurring> recurrings = [];
+  List<Person> people = [];
+
+  /// Contas de vale-alimentação (ficam fora do Disponível).
+  Set<String> get valeAccountIds => {
+    for (final a in accounts)
+      if (a.type == AccountType.vale) a.id,
+  };
+
+  Person? person(String? id) => people.where((p) => p.id == id).firstOrNull;
+  Recurring? recurring(String? id) => recurrings.where((r) => r.id == id).firstOrNull;
+
+  /// Como o lançamento aparece no caderno: "Perfume (1/2)", ou a categoria se não tiver descrição.
+  String labelOf(Entry e) {
+    final base = e.description.isNotEmpty
+        ? e.description
+        : category(e.categoryId)?.name ?? (e.type == EntryType.receita ? 'Entrada' : 'Gasto');
+    return e.installmentCount != null ? '$base (${e.installmentIndex}/${e.installmentCount})' : base;
+  }
 
   Account? account(String? id) => accounts.where((a) => a.id == id).firstOrNull;
   Category? category(String? id) => categories.where((c) => c.id == id).firstOrNull;

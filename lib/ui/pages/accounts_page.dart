@@ -4,6 +4,7 @@ import '../../core/money.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
 import '../../domain/finance.dart';
+import '../../domain/vale.dart';
 import '../widgets/common.dart';
 
 const accountTypeLabels = {
@@ -12,6 +13,7 @@ const accountTypeLabels = {
   AccountType.carteira: '👛 Carteira',
   AccountType.cartao: '💳 Cartão de crédito',
   AccountType.investimento: '📈 Investimento',
+  AccountType.vale: '🍽️ Vale-alimentação',
 };
 
 class AccountsPage extends StatelessWidget {
@@ -50,13 +52,20 @@ class AccountsPage extends StatelessWidget {
                     opacity: a.archived ? 0.6 : 1,
                     child: ListTile(
                       title: Text(a.archived ? '${a.name} (arquivada)' : a.name),
-                      subtitle: Text(accountTypeLabels[a.type]!),
+                      subtitle: Text(
+                        a.type == AccountType.vale
+                            ? '${accountTypeLabels[a.type]} · renova dia ${a.renewDay} com ${formatBRL(a.renewAmount ?? 0)}'
+                            : accountTypeLabels[a.type]!,
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Builder(
                             builder: (context) {
-                              final balance = accountBalance(a, scope.data.entries);
+                              // Vale: o que resta até a próxima renovação.
+                              final balance = a.type == AccountType.vale
+                                  ? valeStatus(a, scope.data.entries, DateTime.now()).left
+                                  : accountBalance(a, scope.data.entries);
                               return Text(
                                 formatBRL(balance),
                                 style: TextStyle(
@@ -100,6 +109,8 @@ class _NewAccountDialog extends StatefulWidget {
 class _NewAccountDialogState extends State<_NewAccountDialog> {
   final _name = TextEditingController();
   final _initial = TextEditingController();
+  final _renewAmount = TextEditingController();
+  final _renewDay = TextEditingController(text: '20');
   AccountType _type = AccountType.corrente;
 
   @override
@@ -123,11 +134,27 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
             ],
             onChanged: (v) => setState(() => _type = v!),
           ),
-          TextField(
-            controller: _initial,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-            decoration: const InputDecoration(labelText: 'Saldo inicial', prefixText: r'R$ '),
-          ),
+          if (_type == AccountType.vale) ...[
+            TextField(
+              controller: _renewAmount,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Valor que entra todo mês', prefixText: r'R$ '),
+            ),
+            TextField(
+              controller: _renewDay,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Dia em que renova', hintText: '20'),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('O vale fica fora do Disponível. Lance as compras com ele para ver quanto resta.'),
+            ),
+          ] else
+            TextField(
+              controller: _initial,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              decoration: const InputDecoration(labelText: 'Saldo inicial', prefixText: r'R$ '),
+            ),
         ],
       ),
       actions: [
@@ -135,8 +162,14 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
         FilledButton(
           onPressed: () async {
             if (_name.text.trim().isEmpty) return;
-            await AppScope.of(context).db
-                .addAccount(name: _name.text.trim(), type: _type, initialBalance: parseBRL(_initial.text) ?? 0);
+            final vale = _type == AccountType.vale;
+            await AppScope.of(context).db.addAccount(
+              name: _name.text.trim(),
+              type: _type,
+              initialBalance: vale ? 0 : parseBRL(_initial.text) ?? 0,
+              renewAmount: vale ? parseBRL(_renewAmount.text) ?? 0 : null,
+              renewDay: vale ? (int.tryParse(_renewDay.text) ?? 20).clamp(1, 28) : null,
+            );
             if (context.mounted) Navigator.pop(context);
           },
           child: const Text('Adicionar'),

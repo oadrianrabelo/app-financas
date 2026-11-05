@@ -34,6 +34,10 @@ class Prefs extends ChangeNotifier {
   String get monoFont => _str('mono_font', defaultMonoFont, monoFonts);
   ThemeMode get themeMode => ThemeMode.values.asNameMap()[_values['theme_mode']] ?? ThemeMode.system;
 
+  /// De quem é este aparelho (pessoa padrão ao lançar).
+  String get mePerson => _str('me_person', 'seed-pessoa-1');
+  Future<void> setMePerson(String id) => _db.setSetting('me_person', id);
+
   Future<void> setTitheBp(int v) => _db.setSetting('tithe_bp', '$v');
   Future<void> setOfferingBp(int v) => _db.setSetting('offering_bp', '$v');
   Future<void> setHandFont(String v) => _db.setSetting('hand_font', v);
