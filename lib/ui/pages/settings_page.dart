@@ -266,6 +266,7 @@ class _LookCard extends StatelessWidget {
               Text('Aparência', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               SegmentedButton<ThemeMode>(
+                showSelectedIcon: false,
                 segments: const [
                   ButtonSegment(value: ThemeMode.system, label: Text('Automático')),
                   ButtonSegment(value: ThemeMode.light, label: Text('Papel')),

@@ -192,6 +192,7 @@ class _EntryFormState extends State<EntryForm> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SegmentedButton<EntryType>(
+            showSelectedIcon: false,
             segments: const [
               ButtonSegment(value: EntryType.despesa, label: Text('Gasto')),
               ButtonSegment(value: EntryType.receita, label: Text('Entrada')),
@@ -209,16 +210,12 @@ class _EntryFormState extends State<EntryForm> {
             autofocus: widget.editing == null,
             onChanged: (_) => _installments > 1 ? setState(() {}) : null,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Valor', prefixText: r'R$ ', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Valor', prefixText: r'R$ '),
           ),
           gap,
           TextField(
             controller: _description,
-            decoration: const InputDecoration(
-              labelText: 'Descrição',
-              hintText: 'Ex.: Feira do mês',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Descrição', hintText: 'Ex.: Feira do mês'),
           ),
           gap,
           Row(
@@ -234,10 +231,7 @@ class _EntryFormState extends State<EntryForm> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: from,
-                  decoration: InputDecoration(
-                    labelText: _type == EntryType.transferencia ? 'De' : 'Conta',
-                    border: const OutlineInputBorder(),
-                  ),
+                  decoration: InputDecoration(labelText: _type == EntryType.transferencia ? 'De' : 'Conta'),
                   items: [for (final a in accounts) DropdownMenuItem(value: a.id, child: Text(a.name))],
                   onChanged: (v) => setState(() => _accountId = v),
                 ),
@@ -248,7 +242,7 @@ class _EntryFormState extends State<EntryForm> {
           if (_type == EntryType.transferencia)
             DropdownButtonFormField<String>(
               initialValue: _toAccountId,
-              decoration: const InputDecoration(labelText: 'Para', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Para'),
               items: [
                 for (final a in accounts.where((a) => a.id != from)) DropdownMenuItem(value: a.id, child: Text(a.name)),
               ],
@@ -258,7 +252,7 @@ class _EntryFormState extends State<EntryForm> {
             DropdownButtonFormField<String?>(
               key: ValueKey(_type),
               initialValue: _categoryId,
-              decoration: const InputDecoration(labelText: 'Categoria', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Categoria'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('Sem categoria')),
                 for (final c in categories) DropdownMenuItem(value: c.id, child: Text('${c.icon} ${c.name}')),

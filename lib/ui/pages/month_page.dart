@@ -7,6 +7,7 @@ import '../../data/database.dart';
 import '../../domain/finance.dart';
 import '../../domain/tithe.dart';
 import '../../domain/vale.dart';
+import '../nav.dart';
 import '../theme/paper.dart';
 import '../widgets/entry_form.dart';
 import '../widgets/ledger.dart';
@@ -38,45 +39,62 @@ class _MonthPageState extends State<MonthPage> {
   void _go(int delta) => _controller.animateToPage(
     (_controller.page?.round() ?? _origin) + delta,
     duration: const Duration(milliseconds: 280),
-    curve: Curves.easeOut,
+    curve: Curves.easeOutCubic,
   );
+
+  void _today() =>
+      _controller.animateToPage(_origin, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+
+  @override
+  void initState() {
+    super.initState();
+    monthNav.attach(go: _go, today: _today);
+  }
+
+  @override
+  void dispose() {
+    monthNav.detach();
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = Paper.of(context);
+    Widget arrow(IconData icon, String tip, VoidCallback onTap) =>
+        IconButton(tooltip: tip, icon: Icon(icon, size: 20), onPressed: onTap, visualDensity: VisualDensity.compact);
     return Scaffold(
       backgroundColor: p.paperShade,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showEntryForm(context, date: _defaultDate(_month)),
-        icon: const Icon(Icons.edit),
-        label: Text('Lançar', style: p.hand(20, color: Theme.of(context).colorScheme.onPrimaryContainer)),
-      ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(tooltip: 'Mês anterior', icon: const Icon(Icons.chevron_left), onPressed: () => _go(-1)),
-                SizedBox(
-                  width: 200,
-                  child: Text(
-                    monthLabel(_month),
-                    textAlign: TextAlign.center,
-                    style: p.hand(22, color: p.pencil),
-                  ),
+                arrow(Icons.chevron_left, 'Mês anterior (←)', () => _go(-1)),
+                arrow(Icons.chevron_right, 'Próximo mês (→)', () => _go(1)),
+                const SizedBox(width: 6),
+                Text(
+                  monthLabel(_month),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2),
                 ),
-                IconButton(tooltip: 'Próximo mês', icon: const Icon(Icons.chevron_right), onPressed: () => _go(1)),
-                if (_month != _thisMonth)
-                  TextButton(
-                    onPressed: () => _controller.animateToPage(
-                      _origin,
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOut,
+                const SizedBox(width: 8),
+                AnimatedOpacity(
+                  opacity: _month != _thisMonth ? 1 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: OutlinedButton(
+                    onPressed: _month != _thisMonth ? _today : null,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 28),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                     ),
                     child: const Text('Hoje'),
                   ),
+                ),
+                const Spacer(),
+                if (monthNav.openPalette != null)
+                  arrow(Icons.search, 'Buscar ou executar', () => monthNav.openPalette!()),
               ],
             ),
           ),
@@ -85,6 +103,7 @@ class _MonthPageState extends State<MonthPage> {
               controller: _controller,
               onPageChanged: (i) {
                 setState(() => _month = _monthAt(i));
+                monthNav.changed(_month);
                 // Contas fixas: lança o mês ao abrir (até o mês que vem, para planejar).
                 if (_month.compareTo(addMonths(_thisMonth, 1)) <= 0) {
                   AppScope.of(context).db.ensureRecurringEntries(_month);
