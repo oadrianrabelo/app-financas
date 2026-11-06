@@ -30,7 +30,7 @@ class Kbd extends StatelessWidget {
             ),
             child: Text(
               k,
-              style: TextStyle(fontFamily: uiFont, fontSize: 11, fontWeight: FontWeight.w600, color: fg),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg),
             ),
           ),
       ],

@@ -7,6 +7,7 @@ import '../../data/database.dart';
 import '../../domain/finance.dart';
 import '../../domain/tithe.dart';
 import '../../domain/vale.dart';
+import '../kit/kit.dart';
 import '../nav.dart';
 import '../theme/paper.dart';
 import '../widgets/entry_form.dart';
@@ -61,8 +62,7 @@ class _MonthPageState extends State<MonthPage> {
   @override
   Widget build(BuildContext context) {
     final p = Paper.of(context);
-    Widget arrow(IconData icon, String tip, VoidCallback onTap) =>
-        IconButton(tooltip: tip, icon: Icon(icon, size: 20), onPressed: onTap, visualDensity: VisualDensity.compact);
+    Widget arrow(IconData icon, String tip, VoidCallback onTap) => LcIconButton(icon, tooltip: tip, onPressed: onTap);
     return Scaffold(
       backgroundColor: p.paperShade,
       body: Column(
@@ -71,8 +71,8 @@ class _MonthPageState extends State<MonthPage> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
             child: Row(
               children: [
-                arrow(Icons.chevron_left, 'Mês anterior (←)', () => _go(-1)),
-                arrow(Icons.chevron_right, 'Próximo mês (→)', () => _go(1)),
+                arrow(LucideIcons.chevronLeft, 'Mês anterior (←)', () => _go(-1)),
+                arrow(LucideIcons.chevronRight, 'Próximo mês (→)', () => _go(1)),
                 const SizedBox(width: 6),
                 Text(
                   monthLabel(_month),
@@ -82,19 +82,16 @@ class _MonthPageState extends State<MonthPage> {
                 AnimatedOpacity(
                   opacity: _month != _thisMonth ? 1 : 0,
                   duration: const Duration(milliseconds: 150),
-                  child: OutlinedButton(
+                  child: LcButton(
+                    'Hoje',
+                    small: true,
+                    kind: LcButtonKind.secondary,
                     onPressed: _month != _thisMonth ? _today : null,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 28),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                    ),
-                    child: const Text('Hoje'),
                   ),
                 ),
                 const Spacer(),
                 if (monthNav.openPalette != null)
-                  arrow(Icons.search, 'Buscar ou executar', () => monthNav.openPalette!()),
+                  arrow(LucideIcons.search, 'Buscar ou executar', () => monthNav.openPalette!()),
               ],
             ),
           ),
@@ -188,7 +185,13 @@ class _MonthSheet extends StatelessWidget {
                     Expanded(
                       child: LedgerSheet(minHeight: minHeight, children: left),
                     ),
-                    const SizedBox(width: 6),
+                    if (AppScope.of(context).prefs.bookRings)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: BinderRings(height: minHeight),
+                      )
+                    else
+                      const SizedBox(width: 6),
                     Expanded(
                       child: LedgerSheet(minHeight: minHeight, children: right),
                     ),
@@ -221,9 +224,9 @@ class _MonthSheet extends StatelessWidget {
       LedgerHeading(monthLabel(month).split(' de ').first, big: true),
       LedgerHeading(
         'Entradas',
-        trailing: IconButton(
-          tooltip: 'Nova entrada',
-          icon: Icon(Icons.add, color: p.pencil),
+        trailing: LcIconButton(
+          LucideIcons.plus,
+          tooltip: 'Nova entrada (E)',
           onPressed: () => showEntryForm(context, type: EntryType.receita, date: _defaultDate(month)),
         ),
       ),
@@ -244,11 +247,19 @@ class _MonthSheet extends StatelessWidget {
       if (pending.isNotEmpty)
         StickyNote(
           text: 'Dízimo a separar de ${formatBRL(pendingTotal)}',
-          action: TextButton(
-            onPressed: () => showTitheDialog(context, incomes: pending),
-            child: Text(
-              'Separar agora',
-              style: p.hand(20, color: p.redInk, weight: FontWeight.w700),
+          action: GestureDetector(
+            onTap: () => showTitheDialog(context, incomes: pending),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Text(
+                  'Separar agora',
+                  style: p
+                      .hand(21, color: p.redInk, weight: FontWeight.w700)
+                      .copyWith(decoration: TextDecoration.underline, decorationColor: p.redInk),
+                ),
+              ),
             ),
           ),
         ),

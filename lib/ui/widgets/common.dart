@@ -1,36 +1,48 @@
 import 'package:flutter/material.dart';
 
 import '../../core/dates.dart';
+import '../kit/kit.dart';
+import '../theme/paper.dart';
 
 /// Página com largura máxima confortável no computador.
 class PageBody extends StatelessWidget {
-  const PageBody({super.key, required this.title, this.trailing, required this.children, this.fab});
+  const PageBody({super.key, required this.title, this.trailing, required this.children, this.subtitle});
   final String title;
+  final String? subtitle;
   final Widget? trailing;
   final List<Widget> children;
-  final Widget? fab;
 
   @override
   Widget build(BuildContext context) {
+    final p = Paper.of(context);
     return Scaffold(
-      floatingActionButton: fab,
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
+          constraints: const BoxConstraints(maxWidth: 720),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 110),
             children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.headlineSmall),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: Theme.of(context).textTheme.headlineSmall),
+                        if (subtitle != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(subtitle!, style: TextStyle(fontSize: 13.5, color: p.pencil)),
+                          ),
+                      ],
+                    ),
+                  ),
                   ?trailing,
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               ...children,
             ],
           ),
@@ -46,50 +58,27 @@ class MonthPicker extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: 'Mês anterior',
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () => onChanged(addMonths(month, -1)),
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      LcIconButton(LucideIcons.chevronLeft, tooltip: 'Mês anterior', onPressed: () => onChanged(addMonths(month, -1))),
+      SizedBox(
+        width: 150,
+        child: Text(
+          monthLabel(month),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        SizedBox(
-          width: 190,
-          child: Text(
-            monthLabel(month),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        IconButton(
-          tooltip: 'Próximo mês',
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () => onChanged(addMonths(month, 1)),
-        ),
-      ],
-    );
-  }
-}
-
-/// Cores de dinheiro positivo/negativo que funcionam no tema claro e escuro.
-Color moneyColor(BuildContext context, {required bool positive}) {
-  final dark = Theme.of(context).brightness == Brightness.dark;
-  if (positive) return dark ? const Color(0xFF34D399) : const Color(0xFF059669);
-  return dark ? const Color(0xFFF87171) : const Color(0xFFDC2626);
-}
-
-Future<bool> confirm(BuildContext context, String message) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (c) => AlertDialog(
-      content: Text(message),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
-        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Confirmar')),
-      ],
-    ),
+      ),
+      LcIconButton(LucideIcons.chevronRight, tooltip: 'Próximo mês', onPressed: () => onChanged(addMonths(month, 1))),
+    ],
   );
-  return ok ?? false;
 }
+
+/// Cores de dinheiro positivo/negativo do tema.
+Color moneyColor(BuildContext context, {required bool positive}) {
+  final p = Paper.of(context);
+  return positive ? p.greenInk : p.redInk;
+}
+
+Future<bool> confirm(BuildContext context, String message) => lcConfirm(context, message);

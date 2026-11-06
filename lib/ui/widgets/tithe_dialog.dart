@@ -4,6 +4,7 @@ import '../../core/money.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
 import '../../domain/tithe.dart';
+import '../kit/kit.dart';
 import '../theme/paper.dart';
 
 /// "Separar dízimo e oferta agora?"
@@ -12,13 +13,11 @@ import '../theme/paper.dart';
 /// separar só a diferença quando uma entrada aumentou.
 /// Devolve true se separou.
 Future<bool> showTitheDialog(BuildContext context, {required List<Entry> incomes, int? base}) async {
-  final ok = await showDialog<bool>(
-    context: context,
+  final ok = await showLcDialog<bool>(
+    context,
     builder: (_) => _TitheDialog(incomes: incomes, base: base ?? incomes.fold(0, (s, e) => s + e.amount)),
   );
-  if (ok == true && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dízimo e oferta separados. ✓')));
-  }
+  if (ok == true && context.mounted) lcToast(context, 'Dízimo e oferta separados.');
   return ok ?? false;
 }
 
@@ -124,37 +123,42 @@ class _TitheDialogState extends State<_TitheDialog> {
   @override
   Widget build(BuildContext context) {
     final p = Paper.of(context);
-    Widget line(String label, int value, {bool bold = false}) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    Widget line(String label, int value, {bool bold = false, String? note}) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(
-            child: Text(label, style: p.hand(22, weight: bold ? FontWeight.w700 : null)),
-          ),
+          Text(label, style: p.hand(23, weight: bold ? FontWeight.w700 : null)),
+          if (note != null) ...[const SizedBox(width: 6), Text(note, style: p.hand(17, color: p.pencil))],
+          const Spacer(),
           Text(formatBRL(value), style: p.mono(15, weight: bold ? FontWeight.w700 : null)),
         ],
       ),
     );
     Widget fields(String label, TextEditingController pct, TextEditingController value, bool tithe) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          SizedBox(width: 70, child: Text(label, style: p.hand(21))),
+          SizedBox(width: 72, child: Text(label, style: p.hand(23))),
           SizedBox(
-            width: 80,
+            width: 84,
             child: TextField(
               controller: pct,
+              textAlign: TextAlign.end,
+              style: p.mono(14),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(suffixText: '%', isDense: true),
+              decoration: lcInputDecoration(context, suffix: '%'),
               onChanged: (v) => _onPct(tithe, v),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: value,
+              textAlign: TextAlign.end,
+              style: p.mono(14),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(prefixText: r'R$ ', isDense: true),
+              decoration: lcInputDecoration(context, prefix: r'R$ '),
               onChanged: (v) => _onValue(tithe, v),
             ),
           ),
@@ -162,38 +166,46 @@ class _TitheDialogState extends State<_TitheDialog> {
       ),
     );
 
-    return AlertDialog(
-      title: Text(
-        'Separar dízimo e oferta agora?',
-        style: p.hand(28, color: p.redInk, weight: FontWeight.w700),
-      ),
-      content: SizedBox(
-        width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            line(
-              widget.incomes.length == 1 ? 'Sobre esta entrada' : 'Sobre ${widget.incomes.length} entradas',
-              widget.base,
+    return LcDialogBody(
+      title: 'Separar dízimo e oferta agora?',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.incomes.length == 1
+                ? 'Sobre esta entrada de ${formatBRL(widget.base)}.'
+                : 'Sobre ${widget.incomes.length} entradas, ${formatBRL(widget.base)} no total.',
+            style: TextStyle(fontSize: 13.5, color: p.pencil),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+            decoration: BoxDecoration(
+              color: p.sticky.withValues(alpha: p.dark ? 0.5 : 0.6),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const Divider(),
-            if (_adjusting) ...[
-              fields('Dízimo', _tithePct, _titheValue, true),
-              fields('Oferta', _offeringPct, _offeringValue, false),
-            ] else ...[
-              line('Dízimo (${formatBp(_titheBp)})', _tithe),
-              line('Oferta (${formatBp(_offeringBp)})', _offering),
-            ],
-            const Divider(),
-            line('Fica disponível', widget.base - _tithe - _offering, bold: true),
-          ],
-        ),
+            child: Column(
+              children: [
+                if (_adjusting) ...[
+                  fields('Dízimo', _tithePct, _titheValue, true),
+                  fields('Oferta', _offeringPct, _offeringValue, false),
+                ] else ...[
+                  line('Dízimo', _tithe, note: formatBp(_titheBp)),
+                  line('Oferta', _offering, note: formatBp(_offeringBp)),
+                ],
+                Divider(color: hairline(p)),
+                line('Fica disponível', widget.base - _tithe - _offering, bold: true),
+              ],
+            ),
+          ),
+        ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Agora não')),
-        if (!_adjusting) TextButton(onPressed: () => setState(() => _adjusting = true), child: const Text('Ajustar…')),
-        FilledButton(onPressed: _separate, child: const Text('Separar')),
+        LcButton('Agora não', kind: LcButtonKind.ghost, onPressed: () => Navigator.pop(context, false)),
+        if (!_adjusting)
+          LcButton('Ajustar…', kind: LcButtonKind.secondary, onPressed: () => setState(() => _adjusting = true)),
+        LcButton('Separar', icon: LucideIcons.handCoins, onPressed: _separate),
       ],
     );
   }

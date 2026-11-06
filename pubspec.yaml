@@ -26,6 +26,7 @@ dependencies:
   googleapis: ^17.0.0
   googleapis_auth: ^2.3.5
   google_sign_in: ^7.2.0
+  lucide_icons_flutter: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -41,10 +42,22 @@ flutter:
   # Para adicionar outra: coloque o .ttf em assets/fonts/<nome>/, declare aqui
   # e registre em lib/ui/theme/fonts.dart.
   fonts:
-    # Interface (botões, menus, formulários)
+    # Interface
     - family: Inter
       fonts:
         - asset: assets/fonts/inter/Inter-Variable.ttf
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/geist/Geist-Variable.ttf
+    - family: IBM Plex Sans
+      fonts:
+        - asset: assets/fonts/ibm_plex_sans/IBMPlexSans-Variable.ttf
+    - family: Atkinson Hyperlegible
+      fonts:
+        - asset: assets/fonts/atkinson/AtkinsonHyperlegible-Regular.ttf
+        - asset: assets/fonts/atkinson/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+    # Letra de mão
     - family: Caveat
       fonts:
         - asset: assets/fonts/caveat/Caveat-Variable.ttf
@@ -62,6 +75,13 @@ flutter:
     - family: Indie Flower
       fonts:
         - asset: assets/fonts/indie_flower/IndieFlower-Regular.ttf
+    - family: Architects Daughter
+      fonts:
+        - asset: assets/fonts/architects_daughter/ArchitectsDaughter-Regular.ttf
+    - family: Sue Ellen Francisco
+      fonts:
+        - asset: assets/fonts/sue_ellen/SueEllenFrancisco-Regular.ttf
+    # Números
     - family: JetBrains Mono
       fonts:
         - asset: assets/fonts/jetbrains_mono/JetBrainsMono-Variable.ttf
@@ -80,3 +100,17 @@ flutter:
         - asset: assets/fonts/space_mono/SpaceMono-Regular.ttf
         - asset: assets/fonts/space_mono/SpaceMono-Bold.ttf
           weight: 700
+    - family: Fira Code
+      fonts:
+        - asset: assets/fonts/fira_code/FiraCode-Variable.ttf
+    - family: DM Mono
+      fonts:
+        - asset: assets/fonts/dm_mono/DMMono-Regular.ttf
+        - asset: assets/fonts/dm_mono/DMMono-Medium.ttf
+          weight: 500
+    - family: Victor Mono
+      fonts:
+        - asset: assets/fonts/victor_mono/VictorMono-Variable.ttf
+    - family: Geist Mono
+      fonts:
+        - asset: assets/fonts/geist_mono/GeistMono-Variable.ttf

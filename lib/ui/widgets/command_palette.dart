@@ -1,6 +1,7 @@
 // Paleta de comandos (⌘K / Ctrl+K), no espírito do Raycast:
 // digite para filtrar ações e lançamentos; ↑ ↓ escolhem, Enter executa, Esc fecha.
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/dates.dart';
@@ -57,40 +58,35 @@ class _PaletteState extends State<_Palette> {
     final q = _query.text.trim().toLowerCase();
     final pending = pendingTithe(data.entries);
     final actions = <_Command>[
+      _Command(LucideIcons.circleMinus, 'Novo gasto', (c) => showEntryForm(c, date: monthNav.defaultDate), keys: ['N']),
       _Command(
-        Icons.remove_circle_outline,
-        'Novo gasto',
-        (c) => showEntryForm(c, date: monthNav.defaultDate),
-        keys: ['N'],
-      ),
-      _Command(
-        Icons.add_circle_outline,
+        LucideIcons.circlePlus,
         'Nova entrada',
         (c) => showEntryForm(c, type: EntryType.receita, date: monthNav.defaultDate),
         keys: ['E'],
       ),
       if (pending.isNotEmpty)
         _Command(
-          Icons.volunteer_activism_outlined,
+          LucideIcons.handCoins,
           'Separar dízimo e oferta',
           (c) => showTitheDialog(c, incomes: pending),
           subtitle: '${pending.length} entrada(s) pendente(s)',
         ),
-      _Command(Icons.today_outlined, 'Ir para o mês atual', (c) async {
+      _Command(LucideIcons.calendarCheck, 'Ir para o mês atual', (c) async {
         widget.goTab(0);
         monthNav.goToday();
       }, keys: ['T']),
-      _Command(Icons.chevron_left, 'Mês anterior', (c) async {
+      _Command(LucideIcons.chevronLeft, 'Mês anterior', (c) async {
         widget.goTab(0);
         monthNav.go(-1);
       }, keys: ['←']),
-      _Command(Icons.chevron_right, 'Próximo mês', (c) async {
+      _Command(LucideIcons.chevronRight, 'Próximo mês', (c) async {
         widget.goTab(0);
         monthNav.go(1);
       }, keys: ['→']),
-      _Command(Icons.receipt_long_outlined, 'Abrir lançamentos', (c) async => widget.goTab(1), keys: ['2']),
-      _Command(Icons.account_balance_outlined, 'Abrir contas', (c) async => widget.goTab(2), keys: ['3']),
-      _Command(Icons.tune, 'Abrir ajustes', (c) async => widget.goTab(3), keys: ['4']),
+      _Command(LucideIcons.receiptText, 'Abrir lançamentos', (c) async => widget.goTab(1), keys: ['2']),
+      _Command(LucideIcons.landmark, 'Abrir contas', (c) async => widget.goTab(2), keys: ['3']),
+      _Command(LucideIcons.slidersHorizontal, 'Abrir ajustes', (c) async => widget.goTab(3), keys: ['4']),
     ].where((a) => q.isEmpty || a.title.toLowerCase().contains(q)).toList();
 
     // Lançamentos que batem com a busca (os 30 mais recentes).
@@ -101,7 +97,7 @@ class _PaletteState extends State<_Palette> {
               .take(30)
               .map(
                 (e) => _Command(
-                  e.type == EntryType.receita ? Icons.south_west : Icons.north_east,
+                  e.type == EntryType.receita ? LucideIcons.arrowDownLeft : LucideIcons.arrowUpRight,
                   data.labelOf(e),
                   (c) => showEntryForm(c, editing: e),
                   subtitle: '${formatDate(e.date)} · ${data.account(e.accountId)?.name ?? ''}',
@@ -167,7 +163,7 @@ class _PaletteState extends State<_Palette> {
                     padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
                     child: Row(
                       children: [
-                        Icon(Icons.search, size: 18, color: p.pencil),
+                        Icon(LucideIcons.search, size: 18, color: p.pencil),
                         Expanded(
                           child: TextField(
                             controller: _query,

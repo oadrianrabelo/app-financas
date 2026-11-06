@@ -1,9 +1,12 @@
 // Peças da "folha de caderno": pauta, margem, linhas de item, títulos.
 // Tudo tem altura múltipla de [kLine], para o texto cair em cima da pauta.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/money.dart';
 import '../theme/paper.dart';
+import '../theme/themes.dart';
 
 const double kLine = 34; // distância entre as linhas da pauta
 const double kMarginX = 40; // posição da margem vermelha
@@ -44,21 +47,106 @@ class _RulePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (p.grain) _paintGrain(canvas, size);
     final rule = Paint()
       ..color = p.rule
       ..strokeWidth = 1;
-    for (var y = kLine * 2; y < size.height; y += kLine) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
+    switch (p.ruling) {
+      case Ruling.pautada:
+        for (var y = kLine * 2; y < size.height; y += kLine) {
+          canvas.drawLine(Offset(0, y), Offset(size.width, y), rule);
+        }
+      case Ruling.quadriculada:
+        final grid = Paint()
+          ..color = p.rule.withValues(alpha: 0.7)
+          ..strokeWidth = 0.8;
+        const step = kLine / 2;
+        for (var y = kLine * 2; y < size.height; y += step) {
+          canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+        }
+        for (var x = 0.0; x < size.width; x += step) {
+          canvas.drawLine(Offset(x, kLine * 2), Offset(x, size.height), grid);
+        }
+      case Ruling.pontilhada:
+        final dot = Paint()..color = p.rule;
+        const step = kLine / 2;
+        for (var y = kLine * 2; y < size.height; y += step) {
+          for (var x = step; x < size.width; x += step) {
+            canvas.drawCircle(Offset(x, y), 1.1, dot);
+          }
+        }
+      case Ruling.lisa:
+        break;
     }
-    final margin = Paint()
-      ..color = p.margin
-      ..strokeWidth = 1.2;
-    canvas.drawLine(const Offset(kMarginX, 0), Offset(kMarginX, size.height), margin);
-    canvas.drawLine(const Offset(kMarginX + 3, 0), Offset(kMarginX + 3, size.height), margin);
+    if (p.showMargin) {
+      final margin = Paint()
+        ..color = p.margin
+        ..strokeWidth = 1.2;
+      canvas.drawLine(const Offset(kMarginX, 0), Offset(kMarginX, size.height), margin);
+      canvas.drawLine(const Offset(kMarginX + 3, 0), Offset(kMarginX + 3, size.height), margin);
+    }
+  }
+
+  /// Textura leve de papel: pontinhos aleatórios (sempre os mesmos, semente fixa).
+  void _paintGrain(Canvas canvas, Size size) {
+    final rnd = math.Random(7);
+    final paint = Paint()..color = p.ink.withValues(alpha: p.dark ? 0.035 : 0.025);
+    final count = (size.width * size.height / 900).clamp(0, 6000).toInt();
+    for (var i = 0; i < count; i++) {
+      canvas.drawCircle(Offset(rnd.nextDouble() * size.width, rnd.nextDouble() * size.height), 0.7, paint);
+    }
   }
 
   @override
   bool shouldRepaint(_RulePainter old) => old.p != p;
+}
+
+/// Argolas de fichário entre as duas páginas do livro aberto.
+class BinderRings extends StatelessWidget {
+  const BinderRings({super.key, required this.height});
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Paper.of(context);
+    return SizedBox(
+      width: 22,
+      height: height,
+      child: CustomPaint(painter: _RingsPainter(p)),
+    );
+  }
+}
+
+class _RingsPainter extends CustomPainter {
+  _RingsPainter(this.p);
+  final Paper p;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final metal = Paint()
+      ..shader = LinearGradient(
+        colors: p.dark
+            ? const [Color(0xFF5C5C62), Color(0xFFB9B9C0), Color(0xFF4A4A50)]
+            : const [Color(0xFF9A9AA2), Color(0xFFF1F1F4), Color(0xFF8A8A92)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, 10))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    final hole = Paint()..color = Colors.black.withValues(alpha: p.dark ? 0.5 : 0.22);
+    for (var y = 70.0; y < size.height - 40; y += 120) {
+      canvas.drawCircle(Offset(3, y), 3.2, hole);
+      canvas.drawCircle(Offset(size.width - 3, y), 3.2, hole);
+      canvas.drawArc(
+        Rect.fromCenter(center: Offset(size.width / 2, y), width: size.width + 2, height: 14),
+        3.3,
+        2.8,
+        false,
+        metal,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingsPainter old) => old.p != p;
 }
 
 /// Título de seção sublinhado ("Cartão", "Casa"...). Ocupa 2 linhas.

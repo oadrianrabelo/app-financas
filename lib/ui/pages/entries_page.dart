@@ -4,9 +4,12 @@ import '../../core/dates.dart';
 import '../../core/money.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
+import '../kit/kit.dart';
+import '../theme/paper.dart';
 import '../widgets/common.dart';
 import '../widgets/entry_form.dart';
 
+/// Todos os lançamentos do mês, agrupados por dia, com busca e filtro.
 class EntriesPage extends StatefulWidget {
   const EntriesPage({super.key});
 
@@ -16,96 +19,139 @@ class EntriesPage extends StatefulWidget {
 
 class _EntriesPageState extends State<EntriesPage> {
   String _month = monthOf(today());
-  String _search = '';
+  final _search = TextEditingController();
+  EntryType? _filter; // null = todos
 
   @override
   Widget build(BuildContext context) {
-    final scope = AppScope.of(context);
-    final data = scope.data;
+    final data = AppScope.of(context).data;
+    final p = Paper.of(context);
     return ListenableBuilder(
       listenable: data,
       builder: (context, _) {
+        final q = _search.text.trim().toLowerCase();
         final list = data
             .monthEntries(_month)
-            .where((e) => data.labelOf(e).toLowerCase().contains(_search.toLowerCase()))
+            .where((e) => _filter == null || e.type == _filter)
+            .where((e) => q.isEmpty || data.labelOf(e).toLowerCase().contains(q))
             .toList();
+        final byDay = <String, List<Entry>>{};
+        for (final e in list) {
+          byDay.putIfAbsent(e.date, () => []).add(e);
+        }
 
         return PageBody(
           title: 'Lançamentos',
           trailing: MonthPicker(month: _month, onChanged: (m) => setState(() => _month = m)),
           children: [
             TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar…'),
-              onChanged: (v) => setState(() => _search = v),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Column(
-                children: [
-                  if (list.isEmpty) const ListTile(title: Text('Nada por aqui.')),
-                  for (final e in list) _EntryTile(entry: e),
-                ],
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: lcInputDecoration(
+                context,
+                hint: 'Buscar neste mês…',
+                prefixIcon: Icon(LucideIcons.search, size: 16, color: p.pencil),
               ),
             ),
+            const SizedBox(height: 12),
+            LcSegmented<EntryType?>(
+              options: const [
+                (null, 'Todos'),
+                (EntryType.despesa, 'Gastos'),
+                (EntryType.receita, 'Entradas'),
+                (EntryType.transferencia, 'Transferências'),
+              ],
+              value: _filter,
+              onChanged: (v) => setState(() => _filter = v),
+            ),
+            const SizedBox(height: 18),
+            if (list.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Column(
+                  children: [
+                    Text('Nada por aqui', style: p.hand(30, color: p.pencil)),
+                    const SizedBox(height: 4),
+                    Text('Use o botão Lançar para começar.', style: TextStyle(fontSize: 13, color: p.pencil)),
+                  ],
+                ),
+              ),
+            for (final MapEntry(key: day, value: entries) in byDay.entries)
+              LcGroup(
+                title: _dayLabel(day),
+                children: [for (final e in entries) _EntryRow(entry: e)],
+              ),
           ],
         );
       },
     );
   }
+
+  static String _dayLabel(String date) {
+    if (date == today()) return 'HOJE';
+    final d = DateTime.parse(date);
+    const w = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO', 'DOMINGO'];
+    return '${w[d.weekday - 1]}, ${formatDate(date).substring(0, 5)}';
+  }
 }
 
-class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry});
+class _EntryRow extends StatelessWidget {
+  const _EntryRow({required this.entry});
   final Entry entry;
 
   @override
   Widget build(BuildContext context) {
     final scope = AppScope.of(context);
     final data = scope.data;
+    final p = Paper.of(context);
     final e = entry;
     final cat = data.category(e.categoryId);
     final transfer = e.type == EntryType.transferencia;
     final (sign, color) = switch (e.type) {
-      EntryType.receita => ('+', moneyColor(context, positive: true)),
-      EntryType.despesa => ('−', moneyColor(context, positive: false)),
-      EntryType.transferencia => ('⇄', null),
+      EntryType.receita => ('+', p.greenInk),
+      EntryType.despesa => ('−', p.ink),
+      EntryType.transferencia => ('', p.pencil),
     };
     final subtitle = [
-      formatDate(e.date),
       data.account(e.accountId)?.name ?? '—',
       if (transfer) '→ ${data.account(e.toAccountId)?.name ?? '—'}',
       ?data.person(e.personId)?.name,
+      if (e.recurringId != null) 'fixa',
       if (!e.paid) 'pendente',
     ].join(' · ');
 
-    return Opacity(
-      opacity: e.paid ? 1 : 0.6,
-      child: ListTile(
-        leading: Text(transfer ? '🔁' : cat?.icon ?? '•', style: const TextStyle(fontSize: 22)),
-        title: Text(data.labelOf(e), overflow: TextOverflow.ellipsis),
-        subtitle: Text(subtitle),
-        onTap: () => showEntryForm(context, editing: e),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$sign ${formatBRL(e.amount)}',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (action) async {
-                if (action == 'pago') await scope.db.markPaid(e.id);
-                if (action == 'excluir' && context.mounted && await confirm(context, 'Excluir este lançamento?')) {
-                  await scope.db.softDelete(scope.db.entries, e.id);
-                }
-              },
-              itemBuilder: (_) => [
-                if (!e.paid) const PopupMenuItem(value: 'pago', child: Text('Marcar como pago')),
-                const PopupMenuItem(value: 'excluir', child: Text('Excluir')),
-              ],
-            ),
-          ],
+    return LcRow(
+      dim: !e.paid,
+      leading: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: (cat != null ? Color(cat.color) : p.ink).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
         ),
+        child: transfer
+            ? Icon(LucideIcons.arrowLeftRight, size: 15, color: p.ink)
+            : Text(cat?.icon ?? '•', style: const TextStyle(fontSize: 15)),
+      ),
+      title: data.labelOf(e),
+      subtitle: subtitle,
+      onTap: () => showEntryForm(context, editing: e),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$sign ${formatBRL(e.amount)}',
+            style: p.mono(14, weight: FontWeight.w600, color: color),
+          ),
+          if (!e.paid)
+            LcIconButton(
+              LucideIcons.check,
+              tooltip: e.type == EntryType.receita ? 'Marcar como recebido' : 'Marcar como pago',
+              size: 15,
+              onPressed: () => scope.db.markPaid(e.id),
+            ),
+        ],
       ),
     );
   }
