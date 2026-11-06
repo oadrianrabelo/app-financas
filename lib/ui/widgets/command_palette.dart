@@ -25,7 +25,7 @@ class _Command {
   final Future<void> Function(BuildContext context) run;
 }
 
-/// [goTab]: troca a aba do app (0 Mês, 1 Lançamentos, 2 Contas, 3 Ajustes).
+/// [goTab]: troca a aba do app (0 Mês, 1 Lançamentos, 2 Ano, 3 Carteira, 4 Ajustes).
 Future<void> showCommandPalette(BuildContext context, {required void Function(int) goTab}) => showGeneralDialog(
   context: context,
   barrierDismissible: true,
@@ -85,8 +85,9 @@ class _PaletteState extends State<_Palette> {
         monthNav.go(1);
       }, keys: ['→']),
       _Command(LucideIcons.receiptText, 'Abrir lançamentos', (c) async => widget.goTab(1), keys: ['2']),
-      _Command(LucideIcons.landmark, 'Abrir contas', (c) async => widget.goTab(2), keys: ['3']),
-      _Command(LucideIcons.slidersHorizontal, 'Abrir ajustes', (c) async => widget.goTab(3), keys: ['4']),
+      _Command(LucideIcons.chartColumn, 'Abrir o ano', (c) async => widget.goTab(2), keys: ['3']),
+      _Command(LucideIcons.wallet, 'Abrir a carteira', (c) async => widget.goTab(3), keys: ['4']),
+      _Command(LucideIcons.slidersHorizontal, 'Abrir ajustes', (c) async => widget.goTab(4), keys: ['5']),
     ].where((a) => q.isEmpty || a.title.toLowerCase().contains(q)).toList();
 
     // Lançamentos que batem com a busca (os 30 mais recentes).
