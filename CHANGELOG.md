@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/oadrianrabelo/livro-caixa/compare/v0.4.0...v0.5.0) (2026-11-06)
+
+
+### ✨ Novas Funcionalidades
+
+* cartão com fatura, guardado, a receber, carteira e aba Ano ([#10](https://github.com/oadrianrabelo/livro-caixa/issues/10)) ([085ebf9](https://github.com/oadrianrabelo/livro-caixa/commit/085ebf9a4245d5b6fabeae363d98e4ced236b208))
+
 ## [0.4.0](https://github.com/oadrianrabelo/livro-caixa/compare/v0.3.0...v0.4.0) (2026-11-06)
 
 
