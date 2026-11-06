@@ -11,6 +11,7 @@ import '../kit/kit.dart';
 import '../nav.dart';
 import '../theme/paper.dart';
 import '../widgets/entry_form.dart';
+import '../widgets/wallet_sheets.dart';
 import '../widgets/ledger.dart';
 import '../widgets/tithe_dialog.dart';
 
@@ -168,7 +169,13 @@ class _MonthSheet extends StatelessWidget {
     return ListenableBuilder(
       listenable: data,
       builder: (context, _) {
-        final s = monthSummary(data.entries, data.categories, month, valeAccounts: data.valeAccountIds);
+        final s = monthSummary(
+          data.entries,
+          data.categories,
+          month,
+          valeAccounts: data.valeAccountIds,
+          cards: data.cards,
+        );
         final pending = pendingTithe(data.entries, month: month);
         return LayoutBuilder(
           builder: (context, c) {
@@ -283,16 +290,26 @@ class _MonthSheet extends StatelessWidget {
     final scope = AppScope.of(context);
     final p = Paper.of(context);
     final data = scope.data;
-    final hasAny = s.sections.values.any((l) => l.isNotEmpty);
+    final hasAny = s.sections.values.any((l) => l.isNotEmpty) || s.invoices.isNotEmpty;
 
     return [
       if (!hasAny) ...[LedgerHeading('Gastos'), LedgerRow(label: 'Nenhum gasto ainda', color: p.pencil)],
       for (final MapEntry(key: section, value: list) in s.sections.entries)
-        if (list.isNotEmpty) ...[
+        if (list.isNotEmpty || (section == CategorySection.cartao && s.invoices.isNotEmpty)) ...[
           LedgerHeading(
             _sectionNames[section]!,
             trailing: Text(formatBRL(s.sectionTotal(section)), style: p.mono(15, weight: FontWeight.w700)),
           ),
+          if (section == CategorySection.cartao)
+            for (final inv in s.invoices)
+              LedgerRow(
+                label: inv.card.name,
+                note: 'fatura · vence ${formatDate(inv.dueDate).substring(0, 5)}',
+                value: inv.total,
+                checked: inv.paid,
+                onCheck: () => scope.db.setPaidAll(inv.purchases.map((e) => e.id), !inv.paid),
+                onTap: () => showInvoiceSheet(context, inv),
+              ),
           for (final e in list)
             LedgerRow(
               label: data.labelOf(e),
@@ -303,6 +320,22 @@ class _MonthSheet extends StatelessWidget {
               onTap: () => showEntryForm(context, editing: e),
             ),
         ],
+      if (s.saved.isNotEmpty) ...[
+        LedgerHeading(
+          'Guardado',
+          trailing: Text(
+            formatBRL(s.savedTotal),
+            style: p.mono(15, weight: FontWeight.w700, color: p.greenInk),
+          ),
+        ),
+        for (final e in s.saved)
+          LedgerRow(
+            label: data.labelOf(e),
+            value: e.amount,
+            color: p.greenInk,
+            onTap: () => showEntryForm(context, editing: e),
+          ),
+      ],
       ..._valeBlock(context, s),
       const LedgerGap(),
       LedgerRow(
@@ -311,6 +344,25 @@ class _MonthSheet extends StatelessWidget {
         color: s.left >= 0 ? p.greenInk : p.redInk,
         bold: true,
       ),
+      if (s.left > 0)
+        Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            height: kLine,
+            child: GestureDetector(
+              onTap: () => showMoveEnvelope(context, save: true, amount: s.left, date: _defaultDate(month)),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Text(
+                  'guardar a sobra →',
+                  style: p
+                      .hand(20, color: p.greenInk)
+                      .copyWith(decoration: TextDecoration.underline, decorationColor: p.greenInk),
+                ),
+              ),
+            ),
+          ),
+        ),
       if (s.unpaid > 0) LedgerRow(label: 'Ainda a pagar', value: s.unpaid, color: p.pencil),
     ];
   }

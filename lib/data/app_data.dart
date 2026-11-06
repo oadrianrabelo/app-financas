@@ -20,6 +20,8 @@ class AppData extends ChangeNotifier {
       db.watchAllEntries().listen((v) => _set(() => entries = v)),
       db.watchRecurrings().listen((v) => _set(() => recurrings = v)),
       db.watchPeople().listen((v) => _set(() => people = v)),
+      db.watchEnvelopes().listen((v) => _set(() => envelopes = v)),
+      db.watchReceivables().listen((v) => _set(() => receivables = v)),
     ];
     db.ensureRecurringEntries(monthOf(today())); // contas fixas do mês atual
   }
@@ -32,6 +34,14 @@ class AppData extends ChangeNotifier {
   List<Entry> entries = [];
   List<Recurring> recurrings = [];
   List<Person> people = [];
+  List<Envelope> envelopes = [];
+  List<Receivable> receivables = [];
+
+  /// Cartões de crédito (compras deles vão para a fatura).
+  List<Account> get cards => [
+    for (final a in accounts)
+      if (a.type == AccountType.cartao) a,
+  ];
 
   /// Contas de vale-alimentação (ficam fora do Disponível).
   Set<String> get valeAccountIds => {

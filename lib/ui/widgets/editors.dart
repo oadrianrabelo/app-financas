@@ -248,6 +248,10 @@ class _AccountEditorState extends State<_AccountEditor> {
     text: widget.editing?.renewAmount == null ? '' : centsToInput(widget.editing!.renewAmount!),
   );
   late final _renewDay = TextEditingController(text: '${widget.editing?.renewDay ?? 20}');
+  late final _closing = TextEditingController(
+    text: widget.editing?.closingDay == null ? '' : '${widget.editing!.closingDay}',
+  );
+  late final _due = TextEditingController(text: widget.editing?.dueDay == null ? '' : '${widget.editing!.dueDay}');
   late AccountType _type = widget.editing?.type ?? AccountType.corrente;
 
   Future<void> _save() async {
@@ -258,6 +262,9 @@ class _AccountEditorState extends State<_AccountEditor> {
     final initial = vale ? 0 : parseBRL(_initial.text) ?? 0;
     final renewAmount = vale ? parseBRL(_renewAmount.text) ?? 0 : null;
     final renewDay = vale ? (int.tryParse(_renewDay.text) ?? 20).clamp(1, 28) : null;
+    final card = _type == AccountType.cartao;
+    final closing = card ? int.tryParse(_closing.text)?.clamp(1, 28) : null;
+    final due = card ? int.tryParse(_due.text)?.clamp(1, 28) : null;
     if (widget.editing == null) {
       await db.addAccount(
         name: name,
@@ -265,6 +272,8 @@ class _AccountEditorState extends State<_AccountEditor> {
         initialBalance: initial,
         renewAmount: renewAmount,
         renewDay: renewDay,
+        closingDay: closing,
+        dueDay: due,
       );
     } else {
       await db.updateAccount(
@@ -274,6 +283,8 @@ class _AccountEditorState extends State<_AccountEditor> {
         initialBalance: initial,
         renewAmount: renewAmount,
         renewDay: renewDay,
+        closingDay: closing,
+        dueDay: due,
       );
     }
     if (mounted) Navigator.pop(context);
@@ -318,6 +329,28 @@ class _AccountEditorState extends State<_AccountEditor> {
             const SizedBox(height: 8),
             Text(
               'O vale fica fora do Disponível. Lance as compras com ele para ver quanto resta.',
+              style: TextStyle(fontSize: 12.5, color: Paper.of(context).pencil),
+            ),
+          ] else if (_type == AccountType.cartao) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: LcField(
+                    label: 'Fatura fecha dia',
+                    controller: _closing,
+                    hint: '3',
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: LcField(label: 'Vence dia', controller: _due, hint: '10', keyboardType: TextInputType.number),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Lance as compras neste cartão: elas somam na fatura certa, que aparece em Cartão no mês do vencimento.',
               style: TextStyle(fontSize: 12.5, color: Paper.of(context).pencil),
             ),
           ] else

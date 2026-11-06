@@ -10,6 +10,7 @@ import 'ui/pages/accounts_page.dart';
 import 'ui/pages/entries_page.dart';
 import 'ui/pages/month_page.dart';
 import 'ui/pages/settings_page.dart';
+import 'ui/pages/year_page.dart';
 import 'ui/theme/paper.dart';
 import 'ui/widgets/command_palette.dart';
 import 'ui/widgets/entry_form.dart';
@@ -75,7 +76,8 @@ class _Dest {
 const _destinations = [
   _Dest('Mês', LucideIcons.bookOpen, LucideIcons.bookOpen, MonthPage()),
   _Dest('Lançamentos', LucideIcons.list, LucideIcons.list, EntriesPage()),
-  _Dest('Contas', LucideIcons.wallet, LucideIcons.wallet, AccountsPage()),
+  _Dest('Ano', LucideIcons.chartColumn, LucideIcons.chartColumn, YearPage()),
+  _Dest('Carteira', LucideIcons.wallet, LucideIcons.wallet, AccountsPage()),
   _Dest('Ajustes', LucideIcons.settings2, LucideIcons.settings2, SettingsPage()),
 ];
 

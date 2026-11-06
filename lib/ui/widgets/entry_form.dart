@@ -4,6 +4,7 @@ import '../../core/dates.dart';
 import '../../core/money.dart';
 import '../../data/app_data.dart';
 import '../../data/database.dart';
+import '../../domain/cards.dart';
 import '../kit/kit.dart';
 import '../theme/paper.dart';
 import 'tithe_dialog.dart';
@@ -289,6 +290,11 @@ class _EntryFormState extends State<EntryForm> {
               onChanged: (v) => setState(() => _categoryId = v),
             ),
           if (onVale) note('Pago com o vale-alimentação: não sai do Disponível.', icon: LucideIcons.utensils),
+          if (_type == EntryType.despesa && data.account(from)?.type == AccountType.cartao)
+            note(
+              'Entra na fatura que vence em ${monthLabel(invoiceDueMonth(data.account(from)!, _date)).toLowerCase()}.',
+              icon: LucideIcons.creditCard,
+            ),
           if (!transfer && data.people.isNotEmpty) ...[
             gap,
             const LcLabel('Quem'),
