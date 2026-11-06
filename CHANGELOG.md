@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/oadrianrabelo/livro-caixa/compare/v0.3.0...v0.4.0) (2026-11-06)
+
+
+### ✨ Novas Funcionalidades
+
+* identidade própria e personalização (temas, caneta, folha, fontes) e edição de categorias e contas ([#9](https://github.com/oadrianrabelo/livro-caixa/issues/9)) ([3637ecc](https://github.com/oadrianrabelo/livro-caixa/commit/3637ecc464ba378f300bc630aaab06af730b03b6))
+* sincronização pelo Google Drive, cifrada com a senha da casa ([#7](https://github.com/oadrianrabelo/livro-caixa/issues/7)) ([98ac2c3](https://github.com/oadrianrabelo/livro-caixa/commit/98ac2c3c025ee9985846f549ee0a165c5b72b9f5))
+
 ## [0.3.0](https://github.com/oadrianrabelo/livro-caixa/compare/v0.2.0...v0.3.0) (2026-11-05)
 
 
