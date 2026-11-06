@@ -10,6 +10,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
+import 'generated/schema_v4.dart' as v4;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -117,6 +118,37 @@ void main() {
           'Adrian',
           'Andressa',
         ]);
+      },
+    );
+  });
+
+  test('v3 -> v4 cria Guardado e marca o alfajor como negócio', () async {
+    await verifier.testWithDataIntegrity(
+      oldVersion: 3,
+      newVersion: 4,
+      createOld: v3.DatabaseAtV3.new,
+      createNew: v4.DatabaseAtV4.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.categories, [
+          const v3.CategoriesData(
+            id: 'seed-cat-alfajor',
+            createdAt: 0,
+            updatedAt: 0,
+            name: 'Alfajor',
+            kind: 'receita',
+            icon: '🍪',
+            color: 0xFFB45309,
+          ),
+        ]);
+      },
+      validateItems: (newDb) async {
+        final cats = {
+          for (final c in await newDb.select(newDb.categories).get()) c.id: c,
+        };
+        expect(cats['seed-cat-alfajor']!.project, 'Alfajor');
+        expect(cats['seed-cat-guardado']!.section, 'guardado');
+        expect(cats['seed-cat-ingredientes']!.project, 'Alfajor');
       },
     );
   });

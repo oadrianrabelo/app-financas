@@ -1,5 +1,6 @@
 // Regras de negócio puras (sem banco, sem tela) -> fáceis de testar.
 import '../data/database.dart';
+import 'cards.dart';
 
 /// Saldo atual de uma conta, considerando só lançamentos pagos.
 int accountBalance(Account account, Iterable<Entry> entries) {
@@ -39,6 +40,12 @@ class MonthSummary {
   /// Gastos pagos com o vale-alimentação: aparecem, mas não saem do Disponível.
   final List<Entry> vale = [];
 
+  /// Faturas de cartão que vencem neste mês (entram em Cartão).
+  final List<Invoice> invoices = [];
+
+  /// Dinheiro guardado em envelopes neste mês (sai do Disponível, mas não é gasto).
+  final List<Entry> saved = [];
+
   int get income => _sum(incomes);
   int get valeSpent => _sum(vale);
   int get tithe => _sum(tithes);
@@ -46,16 +53,20 @@ class MonthSummary {
 
   /// O que temos depois de tirar o que é de Deus. É daqui que se conta.
   int get available => income - tithe - offering;
-  int sectionTotal(CategorySection s) => _sum(sections[s]!);
-  int get expense => sections.values.fold(0, (sum, list) => sum + _sum(list));
-  int get left => available - expense;
+  int get invoicesTotal => invoices.fold(0, (s, i) => s + i.total);
+  int get savedTotal => _sum(saved);
+  int sectionTotal(CategorySection s) => _sum(sections[s]!) + (s == CategorySection.cartao ? invoicesTotal : 0);
+  int get expense => sections.values.fold(0, (sum, list) => sum + _sum(list)) + invoicesTotal;
+  int get left => available - expense - savedTotal;
 
   /// Gastos (e primícias) ainda não pagos/entregues.
-  int get unpaid => [
-    ...tithes,
-    ...offerings,
-    for (final l in sections.values) ...l,
-  ].where((e) => !e.paid).fold(0, (s, e) => s + e.amount);
+  int get unpaid =>
+      [
+        ...tithes,
+        ...offerings,
+        for (final l in sections.values) ...l,
+      ].where((e) => !e.paid).fold(0, (s, e) => s + e.amount) +
+      invoices.where((i) => !i.paid).fold(0, (s, i) => s + i.total);
 
   static int _sum(List<Entry> l) => l.fold(0, (s, e) => s + e.amount);
 }
@@ -67,10 +78,14 @@ MonthSummary monthSummary(
   Iterable<Category> categories,
   String month, {
   Set<String> valeAccounts = const {},
+  Iterable<Account> cards = const [],
 }) {
   final sectionOf = {for (final c in categories) c.id: c.section};
+  final cardIds = {for (final c in cards) c.id};
   final s = MonthSummary();
+  s.invoices.addAll(invoicesFor(cards, entries, month));
   for (final e in entries) {
+    if (cardIds.contains(e.accountId) && e.type == EntryType.despesa) continue; // vão para a fatura
     if (e.deletedAt != null || !e.date.startsWith(month)) continue;
     if (valeAccounts.contains(e.accountId)) {
       if (e.type == EntryType.despesa) s.vale.add(e);
@@ -83,13 +98,19 @@ MonthSummary monthSummary(
         s.tithes.add(e);
       case EntryType.despesa when e.categoryId == ofertaCategoryId:
         s.offerings.add(e);
+      case EntryType.despesa when e.envelopeId != null || sectionOf[e.categoryId] == CategorySection.guardado:
+        s.saved.add(e);
       case EntryType.despesa:
         final section = sectionOf[e.categoryId] ?? CategorySection.outros;
-        s.sections[section == CategorySection.primicias ? CategorySection.outros : section]!.add(e);
+        s
+            .sections[section == CategorySection.primicias || section == CategorySection.guardado
+                ? CategorySection.outros
+                : section]!
+            .add(e);
       case EntryType.transferencia:
     }
   }
-  for (final l in [s.incomes, s.tithes, s.offerings, s.vale, ...s.sections.values]) {
+  for (final l in [s.incomes, s.tithes, s.offerings, s.vale, s.saved, ...s.sections.values]) {
     l.sort((a, b) => a.date.compareTo(b.date) != 0 ? a.date.compareTo(b.date) : a.createdAt.compareTo(b.createdAt));
   }
   return s;

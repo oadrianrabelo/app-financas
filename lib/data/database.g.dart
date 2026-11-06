@@ -117,6 +117,26 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _closingDayMeta = const VerificationMeta(
+    'closingDay',
+  );
+  @override
+  late final GeneratedColumn<int> closingDay = GeneratedColumn<int>(
+    'closing_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
+  @override
+  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
+    'due_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -129,6 +149,8 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     archived,
     renewDay,
     renewAmount,
+    closingDay,
+    dueDay,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -207,6 +229,18 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         ),
       );
     }
+    if (data.containsKey('closing_day')) {
+      context.handle(
+        _closingDayMeta,
+        closingDay.isAcceptableOrUnknown(data['closing_day']!, _closingDayMeta),
+      );
+    }
+    if (data.containsKey('due_day')) {
+      context.handle(
+        _dueDayMeta,
+        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
+      );
+    }
     return context;
   }
 
@@ -258,6 +292,14 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.int,
         data['${effectivePrefix}renew_amount'],
       ),
+      closingDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}closing_day'],
+      ),
+      dueDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_day'],
+      ),
     );
   }
 
@@ -281,6 +323,8 @@ class Account extends DataClass implements Insertable<Account> {
   final bool archived;
   final int? renewDay;
   final int? renewAmount;
+  final int? closingDay;
+  final int? dueDay;
   const Account({
     required this.id,
     required this.createdAt,
@@ -292,6 +336,8 @@ class Account extends DataClass implements Insertable<Account> {
     required this.archived,
     this.renewDay,
     this.renewAmount,
+    this.closingDay,
+    this.dueDay,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -314,6 +360,12 @@ class Account extends DataClass implements Insertable<Account> {
     if (!nullToAbsent || renewAmount != null) {
       map['renew_amount'] = Variable<int>(renewAmount);
     }
+    if (!nullToAbsent || closingDay != null) {
+      map['closing_day'] = Variable<int>(closingDay);
+    }
+    if (!nullToAbsent || dueDay != null) {
+      map['due_day'] = Variable<int>(dueDay);
+    }
     return map;
   }
 
@@ -335,6 +387,12 @@ class Account extends DataClass implements Insertable<Account> {
       renewAmount: renewAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(renewAmount),
+      closingDay: closingDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closingDay),
+      dueDay: dueDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDay),
     );
   }
 
@@ -356,6 +414,8 @@ class Account extends DataClass implements Insertable<Account> {
       archived: serializer.fromJson<bool>(json['archived']),
       renewDay: serializer.fromJson<int?>(json['renewDay']),
       renewAmount: serializer.fromJson<int?>(json['renewAmount']),
+      closingDay: serializer.fromJson<int?>(json['closingDay']),
+      dueDay: serializer.fromJson<int?>(json['dueDay']),
     );
   }
   @override
@@ -374,6 +434,8 @@ class Account extends DataClass implements Insertable<Account> {
       'archived': serializer.toJson<bool>(archived),
       'renewDay': serializer.toJson<int?>(renewDay),
       'renewAmount': serializer.toJson<int?>(renewAmount),
+      'closingDay': serializer.toJson<int?>(closingDay),
+      'dueDay': serializer.toJson<int?>(dueDay),
     };
   }
 
@@ -388,6 +450,8 @@ class Account extends DataClass implements Insertable<Account> {
     bool? archived,
     Value<int?> renewDay = const Value.absent(),
     Value<int?> renewAmount = const Value.absent(),
+    Value<int?> closingDay = const Value.absent(),
+    Value<int?> dueDay = const Value.absent(),
   }) => Account(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -399,6 +463,8 @@ class Account extends DataClass implements Insertable<Account> {
     archived: archived ?? this.archived,
     renewDay: renewDay.present ? renewDay.value : this.renewDay,
     renewAmount: renewAmount.present ? renewAmount.value : this.renewAmount,
+    closingDay: closingDay.present ? closingDay.value : this.closingDay,
+    dueDay: dueDay.present ? dueDay.value : this.dueDay,
   );
   Account copyWithCompanion(AccountsCompanion data) {
     return Account(
@@ -416,6 +482,10 @@ class Account extends DataClass implements Insertable<Account> {
       renewAmount: data.renewAmount.present
           ? data.renewAmount.value
           : this.renewAmount,
+      closingDay: data.closingDay.present
+          ? data.closingDay.value
+          : this.closingDay,
+      dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
     );
   }
 
@@ -431,7 +501,9 @@ class Account extends DataClass implements Insertable<Account> {
           ..write('initialBalance: $initialBalance, ')
           ..write('archived: $archived, ')
           ..write('renewDay: $renewDay, ')
-          ..write('renewAmount: $renewAmount')
+          ..write('renewAmount: $renewAmount, ')
+          ..write('closingDay: $closingDay, ')
+          ..write('dueDay: $dueDay')
           ..write(')'))
         .toString();
   }
@@ -448,6 +520,8 @@ class Account extends DataClass implements Insertable<Account> {
     archived,
     renewDay,
     renewAmount,
+    closingDay,
+    dueDay,
   );
   @override
   bool operator ==(Object other) =>
@@ -462,7 +536,9 @@ class Account extends DataClass implements Insertable<Account> {
           other.initialBalance == this.initialBalance &&
           other.archived == this.archived &&
           other.renewDay == this.renewDay &&
-          other.renewAmount == this.renewAmount);
+          other.renewAmount == this.renewAmount &&
+          other.closingDay == this.closingDay &&
+          other.dueDay == this.dueDay);
 }
 
 class AccountsCompanion extends UpdateCompanion<Account> {
@@ -476,6 +552,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<bool> archived;
   final Value<int?> renewDay;
   final Value<int?> renewAmount;
+  final Value<int?> closingDay;
+  final Value<int?> dueDay;
   final Value<int> rowid;
   const AccountsCompanion({
     this.id = const Value.absent(),
@@ -488,6 +566,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.archived = const Value.absent(),
     this.renewDay = const Value.absent(),
     this.renewAmount = const Value.absent(),
+    this.closingDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AccountsCompanion.insert({
@@ -501,6 +581,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.archived = const Value.absent(),
     this.renewDay = const Value.absent(),
     this.renewAmount = const Value.absent(),
+    this.closingDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -518,6 +600,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Expression<bool>? archived,
     Expression<int>? renewDay,
     Expression<int>? renewAmount,
+    Expression<int>? closingDay,
+    Expression<int>? dueDay,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -531,6 +615,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       if (archived != null) 'archived': archived,
       if (renewDay != null) 'renew_day': renewDay,
       if (renewAmount != null) 'renew_amount': renewAmount,
+      if (closingDay != null) 'closing_day': closingDay,
+      if (dueDay != null) 'due_day': dueDay,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -546,6 +632,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<bool>? archived,
     Value<int?>? renewDay,
     Value<int?>? renewAmount,
+    Value<int?>? closingDay,
+    Value<int?>? dueDay,
     Value<int>? rowid,
   }) {
     return AccountsCompanion(
@@ -559,6 +647,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       archived: archived ?? this.archived,
       renewDay: renewDay ?? this.renewDay,
       renewAmount: renewAmount ?? this.renewAmount,
+      closingDay: closingDay ?? this.closingDay,
+      dueDay: dueDay ?? this.dueDay,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -598,6 +688,12 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (renewAmount.present) {
       map['renew_amount'] = Variable<int>(renewAmount.value);
     }
+    if (closingDay.present) {
+      map['closing_day'] = Variable<int>(closingDay.value);
+    }
+    if (dueDay.present) {
+      map['due_day'] = Variable<int>(dueDay.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -617,6 +713,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
           ..write('archived: $archived, ')
           ..write('renewDay: $renewDay, ')
           ..write('renewAmount: $renewAmount, ')
+          ..write('closingDay: $closingDay, ')
+          ..write('dueDay: $dueDay, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -716,6 +814,17 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   ).withConverter<CategorySection?>($CategoriesTable.$convertersectionn);
+  static const VerificationMeta _projectMeta = const VerificationMeta(
+    'project',
+  );
+  @override
+  late final GeneratedColumn<String> project = GeneratedColumn<String>(
+    'project',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -727,6 +836,7 @@ class $CategoriesTable extends Categories
     icon,
     color,
     section,
+    project,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -791,6 +901,12 @@ class $CategoriesTable extends Categories
     } else if (isInserting) {
       context.missing(_colorMeta);
     }
+    if (data.containsKey('project')) {
+      context.handle(
+        _projectMeta,
+        project.isAcceptableOrUnknown(data['project']!, _projectMeta),
+      );
+    }
     return context;
   }
 
@@ -840,6 +956,10 @@ class $CategoriesTable extends Categories
           data['${effectivePrefix}section'],
         ),
       ),
+      project: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project'],
+      ),
     );
   }
 
@@ -866,6 +986,7 @@ class Category extends DataClass implements Insertable<Category> {
   final String icon;
   final int color;
   final CategorySection? section;
+  final String? project;
   const Category({
     required this.id,
     required this.createdAt,
@@ -876,6 +997,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.icon,
     required this.color,
     this.section,
+    this.project,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -899,6 +1021,9 @@ class Category extends DataClass implements Insertable<Category> {
         $CategoriesTable.$convertersectionn.toSql(section),
       );
     }
+    if (!nullToAbsent || project != null) {
+      map['project'] = Variable<String>(project);
+    }
     return map;
   }
 
@@ -917,6 +1042,9 @@ class Category extends DataClass implements Insertable<Category> {
       section: section == null && nullToAbsent
           ? const Value.absent()
           : Value(section),
+      project: project == null && nullToAbsent
+          ? const Value.absent()
+          : Value(project),
     );
   }
 
@@ -939,6 +1067,7 @@ class Category extends DataClass implements Insertable<Category> {
       section: $CategoriesTable.$convertersectionn.fromJson(
         serializer.fromJson<String?>(json['section']),
       ),
+      project: serializer.fromJson<String?>(json['project']),
     );
   }
   @override
@@ -958,6 +1087,7 @@ class Category extends DataClass implements Insertable<Category> {
       'section': serializer.toJson<String?>(
         $CategoriesTable.$convertersectionn.toJson(section),
       ),
+      'project': serializer.toJson<String?>(project),
     };
   }
 
@@ -971,6 +1101,7 @@ class Category extends DataClass implements Insertable<Category> {
     String? icon,
     int? color,
     Value<CategorySection?> section = const Value.absent(),
+    Value<String?> project = const Value.absent(),
   }) => Category(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -981,6 +1112,7 @@ class Category extends DataClass implements Insertable<Category> {
     icon: icon ?? this.icon,
     color: color ?? this.color,
     section: section.present ? section.value : this.section,
+    project: project.present ? project.value : this.project,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -993,6 +1125,7 @@ class Category extends DataClass implements Insertable<Category> {
       icon: data.icon.present ? data.icon.value : this.icon,
       color: data.color.present ? data.color.value : this.color,
       section: data.section.present ? data.section.value : this.section,
+      project: data.project.present ? data.project.value : this.project,
     );
   }
 
@@ -1007,7 +1140,8 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('kind: $kind, ')
           ..write('icon: $icon, ')
           ..write('color: $color, ')
-          ..write('section: $section')
+          ..write('section: $section, ')
+          ..write('project: $project')
           ..write(')'))
         .toString();
   }
@@ -1023,6 +1157,7 @@ class Category extends DataClass implements Insertable<Category> {
     icon,
     color,
     section,
+    project,
   );
   @override
   bool operator ==(Object other) =>
@@ -1036,7 +1171,8 @@ class Category extends DataClass implements Insertable<Category> {
           other.kind == this.kind &&
           other.icon == this.icon &&
           other.color == this.color &&
-          other.section == this.section);
+          other.section == this.section &&
+          other.project == this.project);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -1049,6 +1185,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> icon;
   final Value<int> color;
   final Value<CategorySection?> section;
+  final Value<String?> project;
   final Value<int> rowid;
   const CategoriesCompanion({
     this.id = const Value.absent(),
@@ -1060,6 +1197,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.icon = const Value.absent(),
     this.color = const Value.absent(),
     this.section = const Value.absent(),
+    this.project = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CategoriesCompanion.insert({
@@ -1072,6 +1210,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String icon,
     required int color,
     this.section = const Value.absent(),
+    this.project = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -1090,6 +1229,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? icon,
     Expression<int>? color,
     Expression<String>? section,
+    Expression<String>? project,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1102,6 +1242,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (icon != null) 'icon': icon,
       if (color != null) 'color': color,
       if (section != null) 'section': section,
+      if (project != null) 'project': project,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1116,6 +1257,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? icon,
     Value<int>? color,
     Value<CategorySection?>? section,
+    Value<String?>? project,
     Value<int>? rowid,
   }) {
     return CategoriesCompanion(
@@ -1128,6 +1270,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       icon: icon ?? this.icon,
       color: color ?? this.color,
       section: section ?? this.section,
+      project: project ?? this.project,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1166,6 +1309,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
         $CategoriesTable.$convertersectionn.toSql(section.value),
       );
     }
+    if (project.present) {
+      map['project'] = Variable<String>(project.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1184,6 +1330,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('icon: $icon, ')
           ..write('color: $color, ')
           ..write('section: $section, ')
+          ..write('project: $project, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1406,6 +1553,17 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _envelopeIdMeta = const VerificationMeta(
+    'envelopeId',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeId = GeneratedColumn<String>(
+    'envelope_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1428,6 +1586,7 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     installmentIndex,
     installmentCount,
     personId,
+    envelopeId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1576,6 +1735,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         personId.isAcceptableOrUnknown(data['person_id']!, _personIdMeta),
       );
     }
+    if (data.containsKey('envelope_id')) {
+      context.handle(
+        _envelopeIdMeta,
+        envelopeId.isAcceptableOrUnknown(data['envelope_id']!, _envelopeIdMeta),
+      );
+    }
     return context;
   }
 
@@ -1669,6 +1834,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.string,
         data['${effectivePrefix}person_id'],
       ),
+      envelopeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_id'],
+      ),
     );
   }
 
@@ -1706,6 +1875,7 @@ class Entry extends DataClass implements Insertable<Entry> {
   final int? installmentIndex;
   final int? installmentCount;
   final String? personId;
+  final String? envelopeId;
   const Entry({
     required this.id,
     required this.createdAt,
@@ -1727,6 +1897,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     this.installmentIndex,
     this.installmentCount,
     this.personId,
+    this.envelopeId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1777,6 +1948,9 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || personId != null) {
       map['person_id'] = Variable<String>(personId);
     }
+    if (!nullToAbsent || envelopeId != null) {
+      map['envelope_id'] = Variable<String>(envelopeId);
+    }
     return map;
   }
 
@@ -1824,6 +1998,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       personId: personId == null && nullToAbsent
           ? const Value.absent()
           : Value(personId),
+      envelopeId: envelopeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(envelopeId),
     );
   }
 
@@ -1857,6 +2034,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       installmentIndex: serializer.fromJson<int?>(json['installmentIndex']),
       installmentCount: serializer.fromJson<int?>(json['installmentCount']),
       personId: serializer.fromJson<String?>(json['personId']),
+      envelopeId: serializer.fromJson<String?>(json['envelopeId']),
     );
   }
   @override
@@ -1887,6 +2065,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'installmentIndex': serializer.toJson<int?>(installmentIndex),
       'installmentCount': serializer.toJson<int?>(installmentCount),
       'personId': serializer.toJson<String?>(personId),
+      'envelopeId': serializer.toJson<String?>(envelopeId),
     };
   }
 
@@ -1911,6 +2090,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     Value<int?> installmentIndex = const Value.absent(),
     Value<int?> installmentCount = const Value.absent(),
     Value<String?> personId = const Value.absent(),
+    Value<String?> envelopeId = const Value.absent(),
   }) => Entry(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -1938,6 +2118,7 @@ class Entry extends DataClass implements Insertable<Entry> {
         ? installmentCount.value
         : this.installmentCount,
     personId: personId.present ? personId.value : this.personId,
+    envelopeId: envelopeId.present ? envelopeId.value : this.envelopeId,
   );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -1977,6 +2158,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           ? data.installmentCount.value
           : this.installmentCount,
       personId: data.personId.present ? data.personId.value : this.personId,
+      envelopeId: data.envelopeId.present
+          ? data.envelopeId.value
+          : this.envelopeId,
     );
   }
 
@@ -2002,13 +2186,14 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('installmentGroup: $installmentGroup, ')
           ..write('installmentIndex: $installmentIndex, ')
           ..write('installmentCount: $installmentCount, ')
-          ..write('personId: $personId')
+          ..write('personId: $personId, ')
+          ..write('envelopeId: $envelopeId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     createdAt,
     updatedAt,
@@ -2029,7 +2214,8 @@ class Entry extends DataClass implements Insertable<Entry> {
     installmentIndex,
     installmentCount,
     personId,
-  );
+    envelopeId,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2053,7 +2239,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.installmentGroup == this.installmentGroup &&
           other.installmentIndex == this.installmentIndex &&
           other.installmentCount == this.installmentCount &&
-          other.personId == this.personId);
+          other.personId == this.personId &&
+          other.envelopeId == this.envelopeId);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -2077,6 +2264,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<int?> installmentIndex;
   final Value<int?> installmentCount;
   final Value<String?> personId;
+  final Value<String?> envelopeId;
   final Value<int> rowid;
   const EntriesCompanion({
     this.id = const Value.absent(),
@@ -2099,6 +2287,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.installmentIndex = const Value.absent(),
     this.installmentCount = const Value.absent(),
     this.personId = const Value.absent(),
+    this.envelopeId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EntriesCompanion.insert({
@@ -2122,6 +2311,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.installmentIndex = const Value.absent(),
     this.installmentCount = const Value.absent(),
     this.personId = const Value.absent(),
+    this.envelopeId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -2151,6 +2341,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<int>? installmentIndex,
     Expression<int>? installmentCount,
     Expression<String>? personId,
+    Expression<String>? envelopeId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2174,6 +2365,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (installmentIndex != null) 'installment_index': installmentIndex,
       if (installmentCount != null) 'installment_count': installmentCount,
       if (personId != null) 'person_id': personId,
+      if (envelopeId != null) 'envelope_id': envelopeId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2199,6 +2391,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<int?>? installmentIndex,
     Value<int?>? installmentCount,
     Value<String?>? personId,
+    Value<String?>? envelopeId,
     Value<int>? rowid,
   }) {
     return EntriesCompanion(
@@ -2222,6 +2415,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       installmentIndex: installmentIndex ?? this.installmentIndex,
       installmentCount: installmentCount ?? this.installmentCount,
       personId: personId ?? this.personId,
+      envelopeId: envelopeId ?? this.envelopeId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2293,6 +2487,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (personId.present) {
       map['person_id'] = Variable<String>(personId.value);
     }
+    if (envelopeId.present) {
+      map['envelope_id'] = Variable<String>(envelopeId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2322,6 +2519,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('installmentIndex: $installmentIndex, ')
           ..write('installmentCount: $installmentCount, ')
           ..write('personId: $personId, ')
+          ..write('envelopeId: $envelopeId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4175,6 +4373,1087 @@ class PeopleCompanion extends UpdateCompanion<Person> {
   }
 }
 
+class $EnvelopesTable extends Envelopes
+    with TableInfo<$EnvelopesTable, Envelope> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EnvelopesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
+  @override
+  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
+    'icon',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('🏺'),
+  );
+  static const VerificationMeta _initialBalanceMeta = const VerificationMeta(
+    'initialBalance',
+  );
+  @override
+  late final GeneratedColumn<int> initialBalance = GeneratedColumn<int>(
+    'initial_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _goalMeta = const VerificationMeta('goal');
+  @override
+  late final GeneratedColumn<int> goal = GeneratedColumn<int>(
+    'goal',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    name,
+    icon,
+    initialBalance,
+    goal,
+    archived,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'envelopes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Envelope> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('icon')) {
+      context.handle(
+        _iconMeta,
+        icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
+      );
+    }
+    if (data.containsKey('initial_balance')) {
+      context.handle(
+        _initialBalanceMeta,
+        initialBalance.isAcceptableOrUnknown(
+          data['initial_balance']!,
+          _initialBalanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('goal')) {
+      context.handle(
+        _goalMeta,
+        goal.isAcceptableOrUnknown(data['goal']!, _goalMeta),
+      );
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Envelope map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Envelope(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      icon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon'],
+      )!,
+      initialBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}initial_balance'],
+      )!,
+      goal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goal'],
+      ),
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
+    );
+  }
+
+  @override
+  $EnvelopesTable createAlias(String alias) {
+    return $EnvelopesTable(attachedDatabase, alias);
+  }
+}
+
+class Envelope extends DataClass implements Insertable<Envelope> {
+  final String id;
+  final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
+  final String name;
+  final String icon;
+  final int initialBalance;
+  final int? goal;
+  final bool archived;
+  const Envelope({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.name,
+    required this.icon,
+    required this.initialBalance,
+    this.goal,
+    required this.archived,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['name'] = Variable<String>(name);
+    map['icon'] = Variable<String>(icon);
+    map['initial_balance'] = Variable<int>(initialBalance);
+    if (!nullToAbsent || goal != null) {
+      map['goal'] = Variable<int>(goal);
+    }
+    map['archived'] = Variable<bool>(archived);
+    return map;
+  }
+
+  EnvelopesCompanion toCompanion(bool nullToAbsent) {
+    return EnvelopesCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      name: Value(name),
+      icon: Value(icon),
+      initialBalance: Value(initialBalance),
+      goal: goal == null && nullToAbsent ? const Value.absent() : Value(goal),
+      archived: Value(archived),
+    );
+  }
+
+  factory Envelope.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Envelope(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      name: serializer.fromJson<String>(json['name']),
+      icon: serializer.fromJson<String>(json['icon']),
+      initialBalance: serializer.fromJson<int>(json['initialBalance']),
+      goal: serializer.fromJson<int?>(json['goal']),
+      archived: serializer.fromJson<bool>(json['archived']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'name': serializer.toJson<String>(name),
+      'icon': serializer.toJson<String>(icon),
+      'initialBalance': serializer.toJson<int>(initialBalance),
+      'goal': serializer.toJson<int?>(goal),
+      'archived': serializer.toJson<bool>(archived),
+    };
+  }
+
+  Envelope copyWith({
+    String? id,
+    int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
+    String? name,
+    String? icon,
+    int? initialBalance,
+    Value<int?> goal = const Value.absent(),
+    bool? archived,
+  }) => Envelope(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    name: name ?? this.name,
+    icon: icon ?? this.icon,
+    initialBalance: initialBalance ?? this.initialBalance,
+    goal: goal.present ? goal.value : this.goal,
+    archived: archived ?? this.archived,
+  );
+  Envelope copyWithCompanion(EnvelopesCompanion data) {
+    return Envelope(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      name: data.name.present ? data.name.value : this.name,
+      icon: data.icon.present ? data.icon.value : this.icon,
+      initialBalance: data.initialBalance.present
+          ? data.initialBalance.value
+          : this.initialBalance,
+      goal: data.goal.present ? data.goal.value : this.goal,
+      archived: data.archived.present ? data.archived.value : this.archived,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Envelope(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('name: $name, ')
+          ..write('icon: $icon, ')
+          ..write('initialBalance: $initialBalance, ')
+          ..write('goal: $goal, ')
+          ..write('archived: $archived')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    name,
+    icon,
+    initialBalance,
+    goal,
+    archived,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Envelope &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.name == this.name &&
+          other.icon == this.icon &&
+          other.initialBalance == this.initialBalance &&
+          other.goal == this.goal &&
+          other.archived == this.archived);
+}
+
+class EnvelopesCompanion extends UpdateCompanion<Envelope> {
+  final Value<String> id;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<String> name;
+  final Value<String> icon;
+  final Value<int> initialBalance;
+  final Value<int?> goal;
+  final Value<bool> archived;
+  final Value<int> rowid;
+  const EnvelopesCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.name = const Value.absent(),
+    this.icon = const Value.absent(),
+    this.initialBalance = const Value.absent(),
+    this.goal = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EnvelopesCompanion.insert({
+    required String id,
+    required int createdAt,
+    required int updatedAt,
+    this.deletedAt = const Value.absent(),
+    required String name,
+    this.icon = const Value.absent(),
+    this.initialBalance = const Value.absent(),
+    this.goal = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       name = Value(name);
+  static Insertable<Envelope> custom({
+    Expression<String>? id,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<String>? name,
+    Expression<String>? icon,
+    Expression<int>? initialBalance,
+    Expression<int>? goal,
+    Expression<bool>? archived,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (name != null) 'name': name,
+      if (icon != null) 'icon': icon,
+      if (initialBalance != null) 'initial_balance': initialBalance,
+      if (goal != null) 'goal': goal,
+      if (archived != null) 'archived': archived,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EnvelopesCompanion copyWith({
+    Value<String>? id,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<String>? name,
+    Value<String>? icon,
+    Value<int>? initialBalance,
+    Value<int?>? goal,
+    Value<bool>? archived,
+    Value<int>? rowid,
+  }) {
+    return EnvelopesCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      initialBalance: initialBalance ?? this.initialBalance,
+      goal: goal ?? this.goal,
+      archived: archived ?? this.archived,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (icon.present) {
+      map['icon'] = Variable<String>(icon.value);
+    }
+    if (initialBalance.present) {
+      map['initial_balance'] = Variable<int>(initialBalance.value);
+    }
+    if (goal.present) {
+      map['goal'] = Variable<int>(goal.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EnvelopesCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('name: $name, ')
+          ..write('icon: $icon, ')
+          ..write('initialBalance: $initialBalance, ')
+          ..write('goal: $goal, ')
+          ..write('archived: $archived, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReceivablesTable extends Receivables
+    with TableInfo<$ReceivablesTable, Receivable> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReceivablesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueDateMeta = const VerificationMeta(
+    'dueDate',
+  );
+  @override
+  late final GeneratedColumn<String> dueDate = GeneratedColumn<String>(
+    'due_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receivedEntryIdMeta = const VerificationMeta(
+    'receivedEntryId',
+  );
+  @override
+  late final GeneratedColumn<String> receivedEntryId = GeneratedColumn<String>(
+    'received_entry_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    description,
+    amount,
+    dueDate,
+    receivedEntryId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'receivables';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Receivable> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(
+        _dueDateMeta,
+        dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    }
+    if (data.containsKey('received_entry_id')) {
+      context.handle(
+        _receivedEntryIdMeta,
+        receivedEntryId.isAcceptableOrUnknown(
+          data['received_entry_id']!,
+          _receivedEntryIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Receivable map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Receivable(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      dueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}due_date'],
+      ),
+      receivedEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}received_entry_id'],
+      ),
+    );
+  }
+
+  @override
+  $ReceivablesTable createAlias(String alias) {
+    return $ReceivablesTable(attachedDatabase, alias);
+  }
+}
+
+class Receivable extends DataClass implements Insertable<Receivable> {
+  final String id;
+  final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
+  final String description;
+  final int amount;
+  final String? dueDate;
+  final String? receivedEntryId;
+  const Receivable({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.description,
+    required this.amount,
+    this.dueDate,
+    this.receivedEntryId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['description'] = Variable<String>(description);
+    map['amount'] = Variable<int>(amount);
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<String>(dueDate);
+    }
+    if (!nullToAbsent || receivedEntryId != null) {
+      map['received_entry_id'] = Variable<String>(receivedEntryId);
+    }
+    return map;
+  }
+
+  ReceivablesCompanion toCompanion(bool nullToAbsent) {
+    return ReceivablesCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      description: Value(description),
+      amount: Value(amount),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      receivedEntryId: receivedEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedEntryId),
+    );
+  }
+
+  factory Receivable.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Receivable(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      description: serializer.fromJson<String>(json['description']),
+      amount: serializer.fromJson<int>(json['amount']),
+      dueDate: serializer.fromJson<String?>(json['dueDate']),
+      receivedEntryId: serializer.fromJson<String?>(json['receivedEntryId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'description': serializer.toJson<String>(description),
+      'amount': serializer.toJson<int>(amount),
+      'dueDate': serializer.toJson<String?>(dueDate),
+      'receivedEntryId': serializer.toJson<String?>(receivedEntryId),
+    };
+  }
+
+  Receivable copyWith({
+    String? id,
+    int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
+    String? description,
+    int? amount,
+    Value<String?> dueDate = const Value.absent(),
+    Value<String?> receivedEntryId = const Value.absent(),
+  }) => Receivable(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    description: description ?? this.description,
+    amount: amount ?? this.amount,
+    dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    receivedEntryId: receivedEntryId.present
+        ? receivedEntryId.value
+        : this.receivedEntryId,
+  );
+  Receivable copyWithCompanion(ReceivablesCompanion data) {
+    return Receivable(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      receivedEntryId: data.receivedEntryId.present
+          ? data.receivedEntryId.value
+          : this.receivedEntryId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Receivable(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('description: $description, ')
+          ..write('amount: $amount, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('receivedEntryId: $receivedEntryId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    description,
+    amount,
+    dueDate,
+    receivedEntryId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Receivable &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.description == this.description &&
+          other.amount == this.amount &&
+          other.dueDate == this.dueDate &&
+          other.receivedEntryId == this.receivedEntryId);
+}
+
+class ReceivablesCompanion extends UpdateCompanion<Receivable> {
+  final Value<String> id;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<String> description;
+  final Value<int> amount;
+  final Value<String?> dueDate;
+  final Value<String?> receivedEntryId;
+  final Value<int> rowid;
+  const ReceivablesCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.description = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.receivedEntryId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReceivablesCompanion.insert({
+    required String id,
+    required int createdAt,
+    required int updatedAt,
+    this.deletedAt = const Value.absent(),
+    required String description,
+    required int amount,
+    this.dueDate = const Value.absent(),
+    this.receivedEntryId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       description = Value(description),
+       amount = Value(amount);
+  static Insertable<Receivable> custom({
+    Expression<String>? id,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<String>? description,
+    Expression<int>? amount,
+    Expression<String>? dueDate,
+    Expression<String>? receivedEntryId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (description != null) 'description': description,
+      if (amount != null) 'amount': amount,
+      if (dueDate != null) 'due_date': dueDate,
+      if (receivedEntryId != null) 'received_entry_id': receivedEntryId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReceivablesCompanion copyWith({
+    Value<String>? id,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<String>? description,
+    Value<int>? amount,
+    Value<String?>? dueDate,
+    Value<String?>? receivedEntryId,
+    Value<int>? rowid,
+  }) {
+    return ReceivablesCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      description: description ?? this.description,
+      amount: amount ?? this.amount,
+      dueDate: dueDate ?? this.dueDate,
+      receivedEntryId: receivedEntryId ?? this.receivedEntryId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<String>(dueDate.value);
+    }
+    if (receivedEntryId.present) {
+      map['received_entry_id'] = Variable<String>(receivedEntryId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReceivablesCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('description: $description, ')
+          ..write('amount: $amount, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('receivedEntryId: $receivedEntryId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4185,6 +5464,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SettingsTable settings = $SettingsTable(this);
   late final $RecurringsTable recurrings = $RecurringsTable(this);
   late final $PeopleTable people = $PeopleTable(this);
+  late final $EnvelopesTable envelopes = $EnvelopesTable(this);
+  late final $ReceivablesTable receivables = $ReceivablesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4197,6 +5478,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     settings,
     recurrings,
     people,
+    envelopes,
+    receivables,
   ];
 }
 
@@ -4211,6 +5494,8 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<bool> archived,
   Value<int?> renewDay,
   Value<int?> renewAmount,
+  Value<int?> closingDay,
+  Value<int?> dueDay,
   Value<int> rowid,
 });
 typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
@@ -4224,6 +5509,8 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<bool> archived,
   Value<int?> renewDay,
   Value<int?> renewAmount,
+  Value<int?> closingDay,
+  Value<int?> dueDay,
   Value<int> rowid,
 });
 
@@ -4286,6 +5573,16 @@ class $$AccountsTableFilterComposer
     column: $table.renewAmount,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<int> get closingDay => $composableBuilder(
+    column: $table.closingDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$AccountsTableOrderingComposer
@@ -4346,6 +5643,16 @@ class $$AccountsTableOrderingComposer
     column: $table.renewAmount,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get closingDay => $composableBuilder(
+    column: $table.closingDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -4390,6 +5697,14 @@ class $$AccountsTableAnnotationComposer
     column: $table.renewAmount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get closingDay => $composableBuilder(
+    column: $table.closingDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dueDay =>
+      $composableBuilder(column: $table.dueDay, builder: (column) => column);
 }
 
 class $$AccountsTableTableManager
@@ -4430,6 +5745,8 @@ class $$AccountsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<int?> renewDay = const Value.absent(),
                 Value<int?> renewAmount = const Value.absent(),
+                Value<int?> closingDay = const Value.absent(),
+                Value<int?> dueDay = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
@@ -4442,6 +5759,8 @@ class $$AccountsTableTableManager
                 archived: archived,
                 renewDay: renewDay,
                 renewAmount: renewAmount,
+                closingDay: closingDay,
+                dueDay: dueDay,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4456,6 +5775,8 @@ class $$AccountsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<int?> renewDay = const Value.absent(),
                 Value<int?> renewAmount = const Value.absent(),
+                Value<int?> closingDay = const Value.absent(),
+                Value<int?> dueDay = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
@@ -4468,6 +5789,8 @@ class $$AccountsTableTableManager
                 archived: archived,
                 renewDay: renewDay,
                 renewAmount: renewAmount,
+                closingDay: closingDay,
+                dueDay: dueDay,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4511,6 +5834,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required String icon,
   required int color,
   Value<CategorySection?> section,
+  Value<String?> project,
   Value<int> rowid,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
@@ -4523,6 +5847,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String> icon,
   Value<int> color,
   Value<CategorySection?> section,
+  Value<String?> project,
   Value<int> rowid,
 });
 
@@ -4581,6 +5906,11 @@ class $$CategoriesTableFilterComposer
     column: $table.section,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<String> get project => $composableBuilder(
+    column: $table.project,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$CategoriesTableOrderingComposer
@@ -4636,6 +5966,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.section,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get project => $composableBuilder(
+    column: $table.project,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -4673,6 +6008,9 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<CategorySection?, String> get section =>
       $composableBuilder(column: $table.section, builder: (column) => column);
+
+  GeneratedColumn<String> get project =>
+      $composableBuilder(column: $table.project, builder: (column) => column);
 }
 
 class $$CategoriesTableTableManager
@@ -4712,6 +6050,7 @@ class $$CategoriesTableTableManager
                 Value<String> icon = const Value.absent(),
                 Value<int> color = const Value.absent(),
                 Value<CategorySection?> section = const Value.absent(),
+                Value<String?> project = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
@@ -4723,6 +6062,7 @@ class $$CategoriesTableTableManager
                 icon: icon,
                 color: color,
                 section: section,
+                project: project,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4736,6 +6076,7 @@ class $$CategoriesTableTableManager
                 required String icon,
                 required int color,
                 Value<CategorySection?> section = const Value.absent(),
+                Value<String?> project = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
@@ -4747,6 +6088,7 @@ class $$CategoriesTableTableManager
                 icon: icon,
                 color: color,
                 section: section,
+                project: project,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4801,6 +6143,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<int?> installmentIndex,
   Value<int?> installmentCount,
   Value<String?> personId,
+  Value<String?> envelopeId,
   Value<int> rowid,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
@@ -4824,6 +6167,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int?> installmentIndex,
   Value<int?> installmentCount,
   Value<String?> personId,
+  Value<String?> envelopeId,
   Value<int> rowid,
 });
 
@@ -4937,6 +6281,11 @@ class $$EntriesTableFilterComposer
     column: $table.personId,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$EntriesTableOrderingComposer
@@ -5047,6 +6396,11 @@ class $$EntriesTableOrderingComposer
     column: $table.personId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$EntriesTableAnnotationComposer
@@ -5134,6 +6488,11 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<String> get personId =>
       $composableBuilder(column: $table.personId, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => column,
+  );
 }
 
 class $$EntriesTableTableManager
@@ -5184,6 +6543,7 @@ class $$EntriesTableTableManager
                 Value<int?> installmentIndex = const Value.absent(),
                 Value<int?> installmentCount = const Value.absent(),
                 Value<String?> personId = const Value.absent(),
+                Value<String?> envelopeId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
@@ -5206,6 +6566,7 @@ class $$EntriesTableTableManager
                 installmentIndex: installmentIndex,
                 installmentCount: installmentCount,
                 personId: personId,
+                envelopeId: envelopeId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5230,6 +6591,7 @@ class $$EntriesTableTableManager
                 Value<int?> installmentIndex = const Value.absent(),
                 Value<int?> installmentCount = const Value.absent(),
                 Value<String?> personId = const Value.absent(),
+                Value<String?> envelopeId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
@@ -5252,6 +6614,7 @@ class $$EntriesTableTableManager
                 installmentIndex: installmentIndex,
                 installmentCount: installmentCount,
                 personId: personId,
+                envelopeId: envelopeId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -6245,6 +7608,555 @@ typedef $$PeopleTableProcessedTableManager =
       Person,
       PrefetchHooks Function()
     >;
+typedef $$EnvelopesTableCreateCompanionBuilder = EnvelopesCompanion Function({
+  required String id,
+  required int createdAt,
+  required int updatedAt,
+  Value<int?> deletedAt,
+  required String name,
+  Value<String> icon,
+  Value<int> initialBalance,
+  Value<int?> goal,
+  Value<bool> archived,
+  Value<int> rowid,
+});
+typedef $$EnvelopesTableUpdateCompanionBuilder = EnvelopesCompanion Function({
+  Value<String> id,
+  Value<int> createdAt,
+  Value<int> updatedAt,
+  Value<int?> deletedAt,
+  Value<String> name,
+  Value<String> icon,
+  Value<int> initialBalance,
+  Value<int?> goal,
+  Value<bool> archived,
+  Value<int> rowid,
+});
+
+class $$EnvelopesTableFilterComposer
+    extends Composer<_$AppDatabase, $EnvelopesTable> {
+  $$EnvelopesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goal => $composableBuilder(
+    column: $table.goal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EnvelopesTableOrderingComposer
+    extends Composer<_$AppDatabase, $EnvelopesTable> {
+  $$EnvelopesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get goal => $composableBuilder(
+    column: $table.goal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EnvelopesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EnvelopesTable> {
+  $$EnvelopesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<int> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get goal =>
+      $composableBuilder(column: $table.goal, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+}
+
+class $$EnvelopesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EnvelopesTable,
+          Envelope,
+          $$EnvelopesTableFilterComposer,
+          $$EnvelopesTableOrderingComposer,
+          $$EnvelopesTableAnnotationComposer,
+          $$EnvelopesTableCreateCompanionBuilder,
+          $$EnvelopesTableUpdateCompanionBuilder,
+          (Envelope, BaseReferences<_$AppDatabase, $EnvelopesTable, Envelope>),
+          Envelope,
+          PrefetchHooks Function()
+        > {
+  $$EnvelopesTableTableManager(_$AppDatabase db, $EnvelopesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EnvelopesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EnvelopesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EnvelopesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> icon = const Value.absent(),
+                Value<int> initialBalance = const Value.absent(),
+                Value<int?> goal = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EnvelopesCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                name: name,
+                icon: icon,
+                initialBalance: initialBalance,
+                goal: goal,
+                archived: archived,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int createdAt,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                required String name,
+                Value<String> icon = const Value.absent(),
+                Value<int> initialBalance = const Value.absent(),
+                Value<int?> goal = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EnvelopesCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                name: name,
+                icon: icon,
+                initialBalance: initialBalance,
+                goal: goal,
+                archived: archived,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$EnvelopesTable, Envelope>(table),
+                  BaseReferences<_$AppDatabase, $EnvelopesTable, Envelope>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EnvelopesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EnvelopesTable,
+      Envelope,
+      $$EnvelopesTableFilterComposer,
+      $$EnvelopesTableOrderingComposer,
+      $$EnvelopesTableAnnotationComposer,
+      $$EnvelopesTableCreateCompanionBuilder,
+      $$EnvelopesTableUpdateCompanionBuilder,
+      (Envelope, BaseReferences<_$AppDatabase, $EnvelopesTable, Envelope>),
+      Envelope,
+      PrefetchHooks Function()
+    >;
+typedef $$ReceivablesTableCreateCompanionBuilder =
+    ReceivablesCompanion Function({
+      required String id,
+      required int createdAt,
+      required int updatedAt,
+      Value<int?> deletedAt,
+      required String description,
+      required int amount,
+      Value<String?> dueDate,
+      Value<String?> receivedEntryId,
+      Value<int> rowid,
+    });
+typedef $$ReceivablesTableUpdateCompanionBuilder =
+    ReceivablesCompanion Function({
+      Value<String> id,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<String> description,
+      Value<int> amount,
+      Value<String?> dueDate,
+      Value<String?> receivedEntryId,
+      Value<int> rowid,
+    });
+
+class $$ReceivablesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReceivablesTable> {
+  $$ReceivablesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receivedEntryId => $composableBuilder(
+    column: $table.receivedEntryId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReceivablesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReceivablesTable> {
+  $$ReceivablesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receivedEntryId => $composableBuilder(
+    column: $table.receivedEntryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReceivablesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReceivablesTable> {
+  $$ReceivablesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<String> get receivedEntryId => $composableBuilder(
+    column: $table.receivedEntryId,
+    builder: (column) => column,
+  );
+}
+
+class $$ReceivablesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReceivablesTable,
+          Receivable,
+          $$ReceivablesTableFilterComposer,
+          $$ReceivablesTableOrderingComposer,
+          $$ReceivablesTableAnnotationComposer,
+          $$ReceivablesTableCreateCompanionBuilder,
+          $$ReceivablesTableUpdateCompanionBuilder,
+          (
+            Receivable,
+            BaseReferences<_$AppDatabase, $ReceivablesTable, Receivable>,
+          ),
+          Receivable,
+          PrefetchHooks Function()
+        > {
+  $$ReceivablesTableTableManager(_$AppDatabase db, $ReceivablesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReceivablesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReceivablesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReceivablesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<String?> dueDate = const Value.absent(),
+                Value<String?> receivedEntryId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceivablesCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                description: description,
+                amount: amount,
+                dueDate: dueDate,
+                receivedEntryId: receivedEntryId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int createdAt,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                required String description,
+                required int amount,
+                Value<String?> dueDate = const Value.absent(),
+                Value<String?> receivedEntryId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReceivablesCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                description: description,
+                amount: amount,
+                dueDate: dueDate,
+                receivedEntryId: receivedEntryId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ReceivablesTable, Receivable>(table),
+                  BaseReferences<_$AppDatabase, $ReceivablesTable, Receivable>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReceivablesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReceivablesTable,
+      Receivable,
+      $$ReceivablesTableFilterComposer,
+      $$ReceivablesTableOrderingComposer,
+      $$ReceivablesTableAnnotationComposer,
+      $$ReceivablesTableCreateCompanionBuilder,
+      $$ReceivablesTableUpdateCompanionBuilder,
+      (
+        Receivable,
+        BaseReferences<_$AppDatabase, $ReceivablesTable, Receivable>,
+      ),
+      Receivable,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6263,4 +8175,8 @@ class $AppDatabaseManager {
       $$RecurringsTableTableManager(_db, _db.recurrings);
   $$PeopleTableTableManager get people =>
       $$PeopleTableTableManager(_db, _db.people);
+  $$EnvelopesTableTableManager get envelopes =>
+      $$EnvelopesTableTableManager(_db, _db.envelopes);
+  $$ReceivablesTableTableManager get receivables =>
+      $$ReceivablesTableTableManager(_db, _db.receivables);
 }

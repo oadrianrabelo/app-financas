@@ -42,11 +42,12 @@ enum EntryType { despesa, receita, transferencia }
 enum TitheStatus { pendente, separado, isento }
 
 /// Seções da página do mês, como no caderno.
-enum CategorySection { primicias, cartao, casa, pessoal, outros }
+enum CategorySection { primicias, cartao, casa, pessoal, outros, guardado }
 
 /// IDs fixos das categorias especiais (criadas pelo app, ver _seedCategories).
 const dizimoCategoryId = 'seed-cat-dizimo';
 const ofertaCategoryId = 'seed-cat-oferta';
+const guardadoCategoryId = 'seed-cat-guardado';
 
 mixin SyncColumns on Table {
   TextColumn get id => text()();
@@ -65,6 +66,8 @@ class Accounts extends Table with SyncColumns {
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
   IntColumn get renewDay => integer().nullable()(); // vale: dia do mês em que renova (1-28)
   IntColumn get renewAmount => integer().nullable()(); // vale: valor que entra a cada renovação
+  IntColumn get closingDay => integer().nullable()(); // cartão: dia em que a fatura fecha
+  IntColumn get dueDay => integer().nullable()(); // cartão: dia em que a fatura vence
 }
 
 class Categories extends Table with SyncColumns {
@@ -73,6 +76,7 @@ class Categories extends Table with SyncColumns {
   TextColumn get icon => text()(); // emoji
   IntColumn get color => integer()(); // 0xAARRGGBB
   TextColumn get section => textEnum<CategorySection>().nullable()(); // só despesas
+  TextColumn get project => text().nullable()(); // agrupa entradas e gastos de um "negócio" (ex.: Alfajor)
 }
 
 /// Lançamentos (despesa, receita ou transferência).
@@ -93,6 +97,7 @@ class Entries extends Table with SyncColumns {
   IntColumn get installmentIndex => integer().nullable()(); // 1, 2, 3...
   IntColumn get installmentCount => integer().nullable()(); // total de parcelas
   TextColumn get personId => text().nullable()(); // quem lançou / de quem é
+  TextColumn get envelopeId => text().nullable()(); // guardar (gasto) ou tirar (entrada) de um envelope
 }
 
 /// Conta fixa: aparece sozinha todo mês (aluguel, internet, luz, salário...).
@@ -109,6 +114,24 @@ class Recurrings extends Table with SyncColumns {
   TextColumn get personId => text().nullable()();
   TextColumn get startMonth => text()(); // AAAA-MM
   BoolColumn get active => boolean().withDefault(const Constant(true))();
+}
+
+/// Envelope do "Guardado" (Férias, Reserva...). O saldo é o inicial + o que
+/// foi guardado (gastos com envelopeId) − o que foi tirado (entradas com envelopeId).
+class Envelopes extends Table with SyncColumns {
+  TextColumn get name => text()();
+  TextColumn get icon => text().withDefault(const Constant('🏺'))();
+  IntColumn get initialBalance => integer().withDefault(const Constant(0))();
+  IntColumn get goal => integer().nullable()(); // meta (centavos)
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+}
+
+/// Dinheiro que alguém deve devolver (ex.: o adiantamento emprestado).
+class Receivables extends Table with SyncColumns {
+  TextColumn get description => text()();
+  IntColumn get amount => integer()();
+  TextColumn get dueDate => text().nullable()(); // AAAA-MM-DD
+  TextColumn get receivedEntryId => text().nullable()(); // a entrada criada quando voltou
 }
 
 /// Pessoas da casa (para saber quem lançou / de quem é o gasto).
@@ -137,7 +160,7 @@ const _uuid = Uuid();
 String newId() => _uuid.v4();
 int now() => DateTime.now().millisecondsSinceEpoch;
 
-@DriftDatabase(tables: [Accounts, Categories, Entries, Budgets, Settings, Recurrings, People])
+@DriftDatabase(tables: [Accounts, Categories, Entries, Budgets, Settings, Recurrings, People, Envelopes, Receivables])
 class AppDatabase extends _$AppDatabase {
   /// O arquivo `livro_caixa.sqlite` fica na pasta de dados do app
   /// (Windows: %APPDATA%, Linux: `~/.local/share/<id>`, Android: dados do app).
@@ -151,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -168,6 +191,7 @@ class AppDatabase extends _$AppDatabase {
       );
       await _seedCategories();
       await _seedPeople();
+      await _seedProjects();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -193,7 +217,22 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.people);
         await _seedPeople();
       },
+      from3To4: (m, schema) async {
+        await m.addColumn(schema.accounts, schema.accounts.closingDay);
+        await m.addColumn(schema.accounts, schema.accounts.dueDay);
+        await m.addColumn(schema.categories, schema.categories.project);
+        await m.addColumn(schema.entries, schema.entries.envelopeId);
+        await m.createTable(schema.envelopes);
+        await m.createTable(schema.receivables);
+        await _seedCategories(); // cria Guardado e Ingredientes do alfajor
+        await _seedProjects();
+      },
     ),
+  );
+
+  /// Alfajor é um "negócio": entradas e gastos dele aparecem juntos (lucro).
+  Future<void> _seedProjects() => customStatement(
+    "UPDATE categories SET project = 'Alfajor' WHERE id IN ('seed-cat-alfajor', 'seed-cat-ingredientes') AND project IS NULL",
   );
 
   /// As duas pessoas da casa, com IDs fixos (iguais em todos os aparelhos).
@@ -259,6 +298,8 @@ class AppDatabase extends _$AppDatabase {
     int initialBalance = 0,
     int? renewDay,
     int? renewAmount,
+    int? closingDay,
+    int? dueDay,
   }) {
     final t = now();
     return into(accounts).insert(
@@ -271,6 +312,8 @@ class AppDatabase extends _$AppDatabase {
         initialBalance: Value(initialBalance),
         renewDay: Value(renewDay),
         renewAmount: Value(renewAmount),
+        closingDay: Value(closingDay),
+        dueDay: Value(dueDay),
       ),
     );
   }
@@ -282,6 +325,8 @@ class AppDatabase extends _$AppDatabase {
     required int initialBalance,
     int? renewDay,
     int? renewAmount,
+    int? closingDay,
+    int? dueDay,
   }) => (update(accounts)..where((a) => a.id.equals(id))).write(
     AccountsCompanion(
       name: Value(name),
@@ -289,6 +334,8 @@ class AppDatabase extends _$AppDatabase {
       initialBalance: Value(initialBalance),
       renewDay: Value(renewDay),
       renewAmount: Value(renewAmount),
+      closingDay: Value(closingDay),
+      dueDay: Value(dueDay),
       updatedAt: Value(now()),
     ),
   );
@@ -299,12 +346,14 @@ class AppDatabase extends _$AppDatabase {
     required String icon,
     required int color,
     CategorySection? section,
+    String? project,
   }) => (update(categories)..where((c) => c.id.equals(id))).write(
     CategoriesCompanion(
       name: Value(name),
       icon: Value(icon),
       color: Value(color),
       section: Value(section),
+      project: Value(project),
       updatedAt: Value(now()),
     ),
   );
@@ -319,6 +368,7 @@ class AppDatabase extends _$AppDatabase {
     required String icon,
     required int color,
     CategorySection? section,
+    String? project,
   }) {
     final t = now();
     return into(categories).insert(
@@ -331,6 +381,7 @@ class AppDatabase extends _$AppDatabase {
         icon: icon,
         color: color,
         section: Value(section),
+        project: Value(project),
       ),
     );
   }
@@ -351,10 +402,13 @@ class AppDatabase extends _$AppDatabase {
     required bool paid,
     TitheStatus? titheStatus,
     String? personId,
+    String? envelopeId,
   }) async {
     final t = now();
     var data = EntriesCompanion(
       personId: Value(personId),
+      // Ao editar, não apaga o envelope se o formulário não mandou.
+      envelopeId: envelopeId == null && id != null ? const Value.absent() : Value(envelopeId),
       type: Value(type),
       amount: Value(amount),
       date: Value(date),
@@ -384,6 +438,11 @@ class AppDatabase extends _$AppDatabase {
   )..where((e) => e.id.equals(id))).write(EntriesCompanion(paid: Value(paid), updatedAt: Value(now())));
 
   Future<void> markPaid(String id) => setPaid(id, true);
+
+  /// Marca vários de uma vez (ex.: todas as compras de uma fatura).
+  Future<void> setPaidAll(Iterable<String> ids, bool paid) => (update(
+    entries,
+  )..where((e) => e.id.isIn(ids))).write(EntriesCompanion(paid: Value(paid), updatedAt: Value(now())));
 
   Future<void> setTitheStatus(Iterable<String> ids, TitheStatus status) => (update(
     entries,
@@ -576,6 +635,107 @@ class AppDatabase extends _$AppDatabase {
     return firstId!;
   }
 
+  // ---- Guardado (envelopes) ----
+
+  Stream<List<Envelope>> watchEnvelopes() =>
+      (select(envelopes)
+            ..where((e) => e.deletedAt.isNull())
+            ..orderBy([(e) => OrderingTerm(expression: e.createdAt)]))
+          .watch();
+
+  Future<String> addEnvelope({required String name, String icon = '🏺', int initialBalance = 0, int? goal}) async {
+    final t = now();
+    final id = newId();
+    await into(envelopes).insert(
+      EnvelopesCompanion.insert(
+        id: id,
+        createdAt: t,
+        updatedAt: t,
+        name: name,
+        icon: Value(icon),
+        initialBalance: Value(initialBalance),
+        goal: Value(goal),
+      ),
+    );
+    return id;
+  }
+
+  Future<void> updateEnvelope(
+    String id, {
+    required String name,
+    required String icon,
+    required int initialBalance,
+    int? goal,
+    bool? archived,
+  }) => (update(envelopes)..where((e) => e.id.equals(id))).write(
+    EnvelopesCompanion(
+      name: Value(name),
+      icon: Value(icon),
+      initialBalance: Value(initialBalance),
+      goal: Value(goal),
+      archived: archived == null ? const Value.absent() : Value(archived),
+      updatedAt: Value(now()),
+    ),
+  );
+
+  /// Guardar (sai do Disponível) ou tirar (volta para o Disponível, sem dízimo:
+  /// o dízimo já foi separado quando o dinheiro entrou).
+  Future<String> moveEnvelope({
+    required Envelope envelope,
+    required int amount,
+    required bool save,
+    required String date,
+    required String accountId,
+  }) => saveEntry(
+    type: save ? EntryType.despesa : EntryType.receita,
+    amount: amount,
+    date: date,
+    description: save ? 'Guardado em ${envelope.name}' : 'Tirado de ${envelope.name}',
+    accountId: accountId,
+    categoryId: save ? guardadoCategoryId : null,
+    paid: true,
+    titheStatus: save ? null : TitheStatus.isento,
+    envelopeId: envelope.id,
+  );
+
+  // ---- A receber ----
+
+  Stream<List<Receivable>> watchReceivables() =>
+      (select(receivables)
+            ..where((r) => r.deletedAt.isNull())
+            ..orderBy([(r) => OrderingTerm(expression: r.dueDate)]))
+          .watch();
+
+  Future<void> addReceivable({required String description, required int amount, String? dueDate}) {
+    final t = now();
+    return into(receivables).insert(
+      ReceivablesCompanion.insert(
+        id: newId(),
+        createdAt: t,
+        updatedAt: t,
+        description: description,
+        amount: amount,
+        dueDate: Value(dueDate),
+      ),
+    );
+  }
+
+  /// O dinheiro voltou: vira uma entrada SEM dízimo (não é dinheiro novo).
+  Future<void> receive(Receivable r, {required String accountId, required String date}) => transaction(() async {
+    final id = await saveEntry(
+      type: EntryType.receita,
+      amount: r.amount,
+      date: date,
+      description: r.description,
+      accountId: accountId,
+      paid: true,
+      titheStatus: TitheStatus.isento,
+    );
+    await (update(receivables)..where((x) => x.id.equals(r.id))).write(
+      ReceivablesCompanion(receivedEntryId: Value(id), updatedAt: Value(now())),
+    );
+  });
+
   // ---- Pessoas ----
 
   Stream<List<Person>> watchPeople() =>
@@ -625,6 +785,9 @@ const _defaultCategories = <(String, String, CategoryKind, String, int, Category
   ('educacao', 'Educação', CategoryKind.despesa, '📚', 0xFF0891B2, CategorySection.pessoal),
   ('assinaturas', 'Assinaturas', CategoryKind.despesa, '📺', 0xFF4F46E5, CategorySection.pessoal),
   ('outros', 'Outros', CategoryKind.despesa, '📦', 0xFF64748B, CategorySection.outros),
+  ('ingredientes', 'Ingredientes do alfajor', CategoryKind.despesa, '🧈', 0xFFB45309, CategorySection.outros),
+  // Guardar dinheiro num envelope (sai do Disponível, mas não é gasto de verdade)
+  ('guardado', 'Guardado', CategoryKind.despesa, '🏺', 0xFF0F766E, CategorySection.guardado),
   // Entradas (todas geram dízimo e oferta, a não ser que a entrada seja marcada como isenta)
   ('salario', 'Salário', CategoryKind.receita, '💼', 0xFF059669, null),
   ('extra', 'Extra', CategoryKind.receita, '✨', 0xFF0D9488, null),
